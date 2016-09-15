@@ -6,6 +6,7 @@
 package neuralNetwork;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  *
@@ -17,8 +18,8 @@ public class NeuralNetwork {
     private final static int INTERNAL_LAYER_SIZE = 25;
     private final static int OUTPUT_LAYER_SIZE = 10;
     private final static float RAND_EPSILON = 0.12f;
+    private final static float LAMBDA = 1;
     
-    private int inputLength;
     private float[][] theta0;
     private float[][] theta1;
     private float[] z1;
@@ -65,7 +66,7 @@ public class NeuralNetwork {
         set(theta1Grad, 0);
     }
     
-    public void train(float[] input, int inputClass) {
+    public void train(float[] input, int inputClass, int m) {
         //Feedforward pass
         feedForward(input);
         
@@ -85,6 +86,13 @@ public class NeuralNetwork {
         }
         
         
+        //Accumulate theta0Grad: theta0Grad + delta1 * a0'
+        for (int i = 0; i < theta0Grad.length; i++) {
+            for (int j = 1; j < theta0Grad[i].length; j++) {
+                theta0Grad[i][j] += delta1[i + 1] * input[j - 1];
+            }
+        }
+        mul(theta0Grad, 1/m);
         
         //Accumulate theta1Grad: theta1Grad + delta2 * a1'
         for (int i = 0; i < theta1Grad.length; i++) {
@@ -92,15 +100,23 @@ public class NeuralNetwork {
                 theta1Grad[i][j] += delta2[i] * a1[j - 1];
             }
         }
+        mul(theta1Grad, 1/m);
         
-        //Accumulate theta0Grad: theta0Grad + delta1 * a0'
+        
+        //Regularized theta0Grad: theta0Grad + (lambda/m) * theta0
         for (int i = 0; i < theta0Grad.length; i++) {
             for (int j = 1; j < theta0Grad[i].length; j++) {
-                theta0Grad[i][j] += delta1[i + 1] * input[j - 1];
+                theta0Grad[i][j] += (LAMBDA/m) * theta0[i][j];
             }
-        }        
+        }
         
-        
+        //Regularized theta1Grad: theta1Grad + (lambda/m) * theta1
+        for (int i = 0; i < theta1Grad.length; i++) {
+            for (int j = 1; j < theta1Grad[i].length; j++) {
+                theta1Grad[i][j] += (LAMBDA/m) * theta1[i][j];
+            }
+        }
+
     }
     
     public Result predict(float[] input) {
@@ -182,6 +198,18 @@ public class NeuralNetwork {
     private void set1InIndex(float[] y, int index) {
         set(y, 0);
         y[index] = 1;
+    }
+    
+    private void mul(float[][] m, float s) {
+        for (int i = 0; i < m.length; i++) {
+            mul(m[i], s);
+        }
+    }
+    
+    private void mul(float[] a, float s) {
+        for (int i = 0; i < a.length; i++) {
+            a[i] *= s;
+        }
     }
     
     public static class Result {
