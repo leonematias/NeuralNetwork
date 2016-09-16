@@ -32,6 +32,10 @@ public class NeuralNetwork {
     private float[][] theta0Grad;
     private float[][] theta1Grad;
     
+    //Gradient descent
+    private float[][] theta0Temp;
+    private float[][] theta1Temp;
+    
     /*
         Theta0 has size 25 x 401
         Theta1 has size 10 x 26
@@ -49,24 +53,73 @@ public class NeuralNetwork {
         y = new float[OUTPUT_LAYER_SIZE];
         theta0Grad = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
         theta1Grad = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
-        
+        theta0Temp = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
+        theta1Temp = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
+    }
+    
+    
+    
+    
+    public void train(List<float[]> input, int[] inputClass, int iterations, float alpha) {
+        //Init theta0 and theta1 with random values
         for (int i = 0; i < theta0.length; i++) {
             for (int j = 0; j < theta0[i].length; j++) {
                 theta0[i][j] = (float)Math.random() * 2 * RAND_EPSILON - RAND_EPSILON;
             }
         }
-        
         for (int i = 0; i < theta1.length; i++) {
             for (int j = 0; j < theta1[i].length; j++) {
                 theta1[i][j] = (float)Math.random() * 2 * RAND_EPSILON - RAND_EPSILON;
             }
         }
         
-        set(theta0Grad, 0);
-        set(theta1Grad, 0);
+        //Init theta temp variables
+        set(theta0Temp, 0);
+        set(theta1Temp, 0);
+        
+        
+        //Perform gradient descent
+        for (int n = 0; n < iterations; n++) {
+            
+            //Update theta0 in temp variable
+            for (int i = 0; i < theta0Temp.length; i++) {
+                for (int j = 0; j < theta0Temp[i].length; j++) {
+                    theta0Temp[i][j] -= alpha * computeGradient(input, inputClass, theta0, theta1);
+                }
+            }
+            
+            //Update theta1 in temp variable
+            for (int i = 0; i < theta1Temp.length; i++) {
+                for (int j = 0; j < theta1Temp[i].length; j++) {
+                    theta1Temp[i][j] -= alpha * computeGradient(input, inputClass, theta0, theta1);
+                }
+            }
+            
+            
+            //Set theta0 and theta1
+            set(theta0, theta0Temp);
+            set(theta1, theta1Temp);
+        }
     }
     
-    public void train(float[] input, int inputClass, int m) {
+    
+    private float computeGradient(List<float[]> input, int[] inputClass, float[][] theta0, float[][] theta1) {
+        int m = input.size();
+        
+        //Compute theta0Grad and theta1Grad for inputs
+        for (int i = 0; i < input.size(); i++) {
+            float[] currentInput = input.get(i);
+            int currentInputClass = inputClass[i];
+            accumulateGradient(currentInput, currentInputClass, m, theta0, theta1);
+        }
+        
+        //TODO: continue
+    }
+    
+    
+    
+    
+    private void accumulateGradient(float[] input, int inputClass, int m, float[][] theta0, float[][] theta1) {
         //Feedforward pass
         feedForward(input);
         
@@ -192,6 +245,14 @@ public class NeuralNetwork {
     private void set(float[][] m, float v) {
         for (int i = 0; i < m.length; i++) {
             set(m[i], v);
+        }
+    }
+    
+    private void set(float[][] m, float[][] v) {
+        for (int i = 0; i < m.length; i++) {
+            for (int j = 0; j < m[i].length; j++) {
+                m[i][j] = v[i][j];
+            }
         }
     }
     
