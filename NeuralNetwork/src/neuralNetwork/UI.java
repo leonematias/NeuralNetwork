@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -81,13 +82,19 @@ public class UI {
         frame.add(controlsPanel, BorderLayout.NORTH);
         
         
-        JPanel mainPanel = new JPanel(new FlowLayout());
-        for (int i = 0; i < 500; i++) {
-            ImageIcon image = new ImageIcon(createGrayScaleImage(imageData.get(i), 20, 20));
-        mainPanel.add(new JLabel(image));
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        for (int i = 0; i < 60; i++) {
+            JPanel panel = new JPanel(new FlowLayout());
+            for (int j = 0; j < 45; j++) {
+                int idx = i * 60 + j;
+                ImageIcon image = new ImageIcon(createGrayScaleImage(imageData.get(idx), 20, 20));
+                panel.add(new JLabel(image));
+            }
+            mainPanel.add(panel);
         }
-        
-        frame.add(mainPanel, BorderLayout.CENTER);
+        JScrollPane imageScrollPane = new JScrollPane(mainPanel);
+        frame.add(imageScrollPane, BorderLayout.CENTER);
         
         
         
@@ -166,12 +173,24 @@ public class UI {
     
     
     private Image createGrayScaleImage(float[] data, int width, int height) {
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         
         int[] pixels = new int[data.length];
         for (int i = 0; i < data.length; i++) {
-            pixels[i] = (int)(data[i] * 255) / 10;
+            float p = data[i];
+            //pixels[i] = (int)(data[i] * 0x00010101);
+
+            int r = (int)(p * 255);
+            int g = (int)(p * 255);
+            int b = (int)(p * 255);
+            int a = (int)(1 * 255);
+            int c = ((a & 0xFF) << 24) |((r & 0xFF) << 16) | ((g & 0xFF) << 8)  | ((b & 0xFF) << 0);
+            pixels[i] = c;
+            //pixels[i] = Integer.MAX_VALUE;
+            
+            
         }
+        
         
         image.setRGB(0, 0, width, height, pixels, 0, width);
         return image;
