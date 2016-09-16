@@ -22,6 +22,8 @@ public class NeuralNetwork {
     
     private float[][] theta0;
     private float[][] theta1;
+    
+    //Temp variables
     private float[] z1;
     private float[] a1;
     private float[] z2;
@@ -29,12 +31,6 @@ public class NeuralNetwork {
     private float[] delta1;
     private float[] delta2;
     private float[] y;
-    private float[][] theta0Grad;
-    private float[][] theta1Grad;
-    
-    //Gradient descent
-    private float[][] theta0Temp;
-    private float[][] theta1Temp;
     
     /*
         Theta0 has size 25 x 401
@@ -51,16 +47,12 @@ public class NeuralNetwork {
         delta1 = new float[INTERNAL_LAYER_SIZE + 1];
         delta2 = new float[OUTPUT_LAYER_SIZE];
         y = new float[OUTPUT_LAYER_SIZE];
-        theta0Grad = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
-        theta1Grad = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
-        theta0Temp = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
-        theta1Temp = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
     }
     
     
     
     
-    public void train(List<float[]> input, int[] inputClass, int iterations, float alpha) {
+    public void train(List<float[]> input, int[] inputClass, int iterations, float alpha, float lambda) {
         //Init theta0 and theta1 with random values
         for (int i = 0; i < theta0.length; i++) {
             for (int j = 0; j < theta0[i].length; j++) {
@@ -74,27 +66,37 @@ public class NeuralNetwork {
         }
         
         //Init theta temp variables
+        float[][] theta0Temp = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
+        float[][] theta1Temp = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
         set(theta0Temp, 0);
         set(theta1Temp, 0);
+        
+        //Init gradients
+        float[][] theta0Grad = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
+        float[][] theta1Grad = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
+        set(theta0Grad, 0);
+        set(theta1Grad, 0);
         
         
         //Perform gradient descent
         for (int n = 0; n < iterations; n++) {
             
+            //Compute gradient with current theta
+            computeGradient(input, inputClass, theta0, theta1, lambda, theta0Grad, theta1Grad);
+            
             //Update theta0 in temp variable
             for (int i = 0; i < theta0Temp.length; i++) {
                 for (int j = 0; j < theta0Temp[i].length; j++) {
-                    theta0Temp[i][j] -= alpha * computeGradient(input, inputClass, theta0, theta1);
+                    theta0Temp[i][j] -= alpha * theta0Grad[i][j];
                 }
             }
             
             //Update theta1 in temp variable
             for (int i = 0; i < theta1Temp.length; i++) {
                 for (int j = 0; j < theta1Temp[i].length; j++) {
-                    theta1Temp[i][j] -= alpha * computeGradient(input, inputClass, theta0, theta1);
+                    theta1Temp[i][j] -= alpha * theta1Grad[i][j];
                 }
             }
-            
             
             //Set theta0 and theta1
             set(theta0, theta0Temp);
@@ -103,23 +105,39 @@ public class NeuralNetwork {
     }
     
     
-    private float computeGradient(List<float[]> input, int[] inputClass, float[][] theta0, float[][] theta1) {
-        int m = input.size();
+    private void computeGradient(List<float[]> input, int[] inputClass, float[][] theta0, float[][] theta1, float lambda, float[][] theta0Grad, float[][] theta1Grad) {
         
         //Compute theta0Grad and theta1Grad for inputs
         for (int i = 0; i < input.size(); i++) {
             float[] currentInput = input.get(i);
             int currentInputClass = inputClass[i];
-            accumulateGradient(currentInput, currentInputClass, m, theta0, theta1);
+            accumulateGradient(currentInput, currentInputClass, theta0, theta1, theta0Grad, theta1Grad);
         }
         
-        //TODO: continue
+        //Divide gradient by m
+        int m = input.size();
+        mul(theta0Grad, 1/m);
+        mul(theta1Grad, 1/m);
+        
+        //Regularized theta0Grad: theta0Grad + (lambda/m) * theta0
+        for (int i = 0; i < theta0Grad.length; i++) {
+            for (int j = 1; j < theta0Grad[i].length; j++) {
+                theta0Grad[i][j] += (lambda/m) * theta0[i][j];
+            }
+        }
+        
+        //Regularized theta1Grad: theta1Grad + (lambda/m) * theta1
+        for (int i = 0; i < theta1Grad.length; i++) {
+            for (int j = 1; j < theta1Grad[i].length; j++) {
+                theta1Grad[i][j] += (lambda/m) * theta1[i][j];
+            }
+        }
     }
     
     
     
     
-    private void accumulateGradient(float[] input, int inputClass, int m, float[][] theta0, float[][] theta1) {
+    private void accumulateGradient(float[] input, int inputClass, float[][] theta0, float[][] theta1, float[][] theta0Grad, float[][] theta1Grad) {
         //Feedforward pass
         feedForward(input);
         
@@ -145,7 +163,6 @@ public class NeuralNetwork {
                 theta0Grad[i][j] += delta1[i + 1] * input[j - 1];
             }
         }
-        mul(theta0Grad, 1/m);
         
         //Accumulate theta1Grad: theta1Grad + delta2 * a1'
         for (int i = 0; i < theta1Grad.length; i++) {
@@ -153,23 +170,6 @@ public class NeuralNetwork {
                 theta1Grad[i][j] += delta2[i] * a1[j - 1];
             }
         }
-        mul(theta1Grad, 1/m);
-        
-        
-        //Regularized theta0Grad: theta0Grad + (lambda/m) * theta0
-        for (int i = 0; i < theta0Grad.length; i++) {
-            for (int j = 1; j < theta0Grad[i].length; j++) {
-                theta0Grad[i][j] += (LAMBDA/m) * theta0[i][j];
-            }
-        }
-        
-        //Regularized theta1Grad: theta1Grad + (lambda/m) * theta1
-        for (int i = 0; i < theta1Grad.length; i++) {
-            for (int j = 1; j < theta1Grad[i].length; j++) {
-                theta1Grad[i][j] += (LAMBDA/m) * theta1[i][j];
-            }
-        }
-
     }
     
     public Result predict(float[] input) {
