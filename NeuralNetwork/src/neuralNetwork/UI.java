@@ -58,8 +58,7 @@ public class UI {
     }
     
     public UI() {
-        neuralNetwork = new NeuralNetwork();
-        neuralNetwork.init();
+        neuralNetwork = new NeuralNetwork(400, 25, 10);
         
         imageData = loadImages("data/input_images.csv");
         

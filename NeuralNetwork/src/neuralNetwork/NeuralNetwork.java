@@ -14,39 +14,44 @@ import java.util.List;
  */
 public class NeuralNetwork {
 
-    private final static int INPUT_LAYER_SIZE = 400;
-    private final static int INTERNAL_LAYER_SIZE = 25;
-    private final static int OUTPUT_LAYER_SIZE = 10;
     private final static float RAND_EPSILON = 0.12f;
-    private final static float LAMBDA = 1;
     
-    private float[][] theta0;
-    private float[][] theta1;
+    private final int inputLayerSize;
+    private final int internalLayerSize;
+    private final int outputLayerSize;
+    
+    private final float[][] theta0;
+    private final float[][] theta1;
     
     //Temp variables
-    private float[] z1;
-    private float[] a1;
-    private float[] z2;
-    private float[] a2;
-    private float[] delta1;
-    private float[] delta2;
-    private float[] y;
+    private final float[] z1;
+    private final float[] a1;
+    private final float[] z2;
+    private final float[] a2;
+    private final float[] delta1;
+    private final float[] delta2;
+    private final float[] y;
     
     /*
         Theta0 has size 25 x 401
         Theta1 has size 10 x 26
     */
     
-    public void init() {
-        theta0 = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
-        theta1 = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
-        z1 = new float[INTERNAL_LAYER_SIZE];
-        a1 = new float[INTERNAL_LAYER_SIZE];
-        z2 = new float[OUTPUT_LAYER_SIZE];
-        a2 = new float[OUTPUT_LAYER_SIZE];
-        delta1 = new float[INTERNAL_LAYER_SIZE + 1];
-        delta2 = new float[OUTPUT_LAYER_SIZE];
-        y = new float[OUTPUT_LAYER_SIZE];
+    public NeuralNetwork(int inputLayerSize, int internalLayerSize, int outputLayerSize) {
+        this.inputLayerSize = inputLayerSize;
+        this.internalLayerSize = internalLayerSize;
+        this.outputLayerSize = outputLayerSize;
+        
+        theta0 = new float[inputLayerSize][inputLayerSize + 1];
+        theta1 = new float[outputLayerSize][internalLayerSize + 1];
+        
+        z1 = new float[internalLayerSize];
+        a1 = new float[internalLayerSize];
+        z2 = new float[outputLayerSize];
+        a2 = new float[outputLayerSize];
+        delta1 = new float[internalLayerSize + 1];
+        delta2 = new float[outputLayerSize];
+        y = new float[outputLayerSize];
     }
     
     
@@ -66,14 +71,14 @@ public class NeuralNetwork {
         }
         
         //Init theta temp variables
-        float[][] theta0Temp = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
-        float[][] theta1Temp = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
+        float[][] theta0Temp = new float[internalLayerSize][inputLayerSize + 1];
+        float[][] theta1Temp = new float[outputLayerSize][internalLayerSize + 1];
         set(theta0Temp, 0);
         set(theta1Temp, 0);
         
         //Init gradients
-        float[][] theta0Grad = new float[INTERNAL_LAYER_SIZE][INPUT_LAYER_SIZE + 1];
-        float[][] theta1Grad = new float[OUTPUT_LAYER_SIZE][INTERNAL_LAYER_SIZE + 1];
+        float[][] theta0Grad = new float[internalLayerSize][inputLayerSize + 1];
+        float[][] theta1Grad = new float[outputLayerSize][internalLayerSize + 1];
         set(theta0Grad, 0);
         set(theta1Grad, 0);
         
