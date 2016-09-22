@@ -42,7 +42,7 @@ public class NeuralNetwork {
         this.internalLayerSize = internalLayerSize;
         this.outputLayerSize = outputLayerSize;
         
-        theta0 = new float[inputLayerSize][inputLayerSize + 1];
+        theta0 = new float[internalLayerSize][inputLayerSize + 1];
         theta1 = new float[outputLayerSize][internalLayerSize + 1];
         
         z1 = new float[internalLayerSize];

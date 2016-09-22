@@ -91,6 +91,7 @@ public class Form extends javax.swing.JFrame {
         jScrollPane2 = new javax.swing.JScrollPane();
         trainningPanelsContainer = new javax.swing.JPanel();
         buttonSaveTrainningData = new javax.swing.JButton();
+        labelConfidence = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Neural Network");
@@ -160,6 +161,11 @@ public class Form extends javax.swing.JFrame {
         });
 
         buttonPredict.setText("Predict symbol");
+        buttonPredict.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                buttonPredictActionPerformed(evt);
+            }
+        });
 
         labelPredict.setBackground(new java.awt.Color(255, 255, 255));
         labelPredict.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
@@ -191,6 +197,8 @@ public class Form extends javax.swing.JFrame {
             }
         });
 
+        labelConfidence.setText("Confidence");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -205,7 +213,7 @@ public class Form extends javax.swing.JFrame {
                         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 76, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(buttonAdd, javax.swing.GroupLayout.DEFAULT_SIZE, 76, Short.MAX_VALUE)
+                            .addComponent(buttonAdd, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(buttonClear, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -214,7 +222,8 @@ public class Form extends javax.swing.JFrame {
                         .addGap(116, 116, 116)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(labelPredict, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(buttonPredict, javax.swing.GroupLayout.DEFAULT_SIZE, 118, Short.MAX_VALUE))))
+                            .addComponent(buttonPredict, javax.swing.GroupLayout.PREFERRED_SIZE, 118, Short.MAX_VALUE)
+                            .addComponent(labelConfidence, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -232,7 +241,9 @@ public class Form extends javax.swing.JFrame {
                             .addComponent(buttonPredict)
                             .addComponent(buttonClear))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(labelPredict, javax.swing.GroupLayout.PREFERRED_SIZE, 104, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(labelPredict, javax.swing.GroupLayout.PREFERRED_SIZE, 104, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(labelConfidence))
                     .addComponent(drawingPanelPlaceholder, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jScrollPane1))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -265,9 +276,7 @@ public class Form extends javax.swing.JFrame {
 
     private void buttonAddActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonAddActionPerformed
         int n = Integer.parseInt((String)listLabels.getSelectedValue());
-        BufferedImage drawingImage = drawingPanel.createImage();
-        Image scaledImage = drawingImage.getScaledInstance(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, Image.SCALE_FAST);
-        addImageToTrainningDataPanel(scaledImage, n);
+        addImageToTrainningDataPanel(getImageFromDrawingPanel(), n);
 
         this.drawingPanel.clearDraw();
     }//GEN-LAST:event_buttonAddActionPerformed
@@ -289,6 +298,16 @@ public class Form extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, "Data saved to " + dst.getAbsolutePath(), "Data saved", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_buttonSaveTrainningDataActionPerformed
 
+    private void buttonPredictActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonPredictActionPerformed
+        predict();
+    }//GEN-LAST:event_buttonPredictActionPerformed
+
+    private Image getImageFromDrawingPanel() {
+        BufferedImage drawingImage = drawingPanel.createImage();
+        Image scaledImage = drawingImage.getScaledInstance(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, Image.SCALE_FAST);
+        return scaledImage;
+    }
+    
     private void addImageToTrainningDataPanel(Image image, int label) {
         String n = String.valueOf(label);
         JPanel trainningPanel = this.trainningPanels.get(n);
@@ -423,7 +442,29 @@ public class Form extends javax.swing.JFrame {
         }
         
         this.neuralNetwork.train(input, inputClass, 10, 1, 1);
+        
+        JOptionPane.showMessageDialog(this, "Trainning is done");
     }
+    
+    private void predict() {
+        Image image = getImageFromDrawingPanel();
+        
+        BufferedImage tempImg = new BufferedImage(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D tempImgG = tempImg.createGraphics();
+        tempImgG.setPaint(Color.WHITE);
+        tempImgG.fillRect(0, 0, TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT);
+        tempImgG.drawImage(image, 0, 0, this);
+                
+        float[] imgData = imageToFloatArray(tempImg);
+        
+        NeuralNetwork.Result result = neuralNetwork.predict(imgData);
+        int n = result.predictedClass;
+        
+        labelPredict.setText(String.valueOf(n));
+        labelConfidence.setText(String.valueOf(result.confidence));
+        
+    }
+    
     
     private float[] imageToFloatArray(BufferedImage image) {
         int[] pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
@@ -515,6 +556,7 @@ public class Form extends javax.swing.JFrame {
     private javax.swing.JPanel drawingPanelPlaceholder;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JLabel labelConfidence;
     private javax.swing.JLabel labelPredict;
     private javax.swing.JList listLabels;
     private javax.swing.JPanel trainningPanelsContainer;
