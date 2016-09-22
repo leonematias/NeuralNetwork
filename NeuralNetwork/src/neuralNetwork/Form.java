@@ -15,6 +15,12 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +29,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 /**
@@ -60,6 +67,8 @@ public class Form extends javax.swing.JFrame {
         this.trainningImagesCount = 0;
         
         this.neuralNetwork = new NeuralNetwork(400, 25, 10);
+        
+        loadTrainningDataPanelFromFile("data/trainning_data.txt");
     }
 
     /**
@@ -81,6 +90,7 @@ public class Form extends javax.swing.JFrame {
         labelPredict = new javax.swing.JLabel();
         jScrollPane2 = new javax.swing.JScrollPane();
         trainningPanelsContainer = new javax.swing.JPanel();
+        buttonSaveTrainningData = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Neural Network");
@@ -174,6 +184,13 @@ public class Form extends javax.swing.JFrame {
 
         jScrollPane2.setViewportView(trainningPanelsContainer);
 
+        buttonSaveTrainningData.setText("Save trainning data");
+        buttonSaveTrainningData.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                buttonSaveTrainningDataActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -187,19 +204,17 @@ public class Form extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 76, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(buttonAdd, javax.swing.GroupLayout.DEFAULT_SIZE, 76, Short.MAX_VALUE)
+                            .addComponent(buttonClear, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(buttonClear)
-                                .addGap(108, 108, 108)
-                                .addComponent(buttonTrain)
-                                .addGap(26, 26, 26)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(labelPredict, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(buttonPredict, javax.swing.GroupLayout.PREFERRED_SIZE, 118, Short.MAX_VALUE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 18, Short.MAX_VALUE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(buttonAdd, javax.swing.GroupLayout.PREFERRED_SIZE, 76, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(0, 0, Short.MAX_VALUE)))))
+                            .addComponent(buttonSaveTrainningData)
+                            .addComponent(buttonTrain, javax.swing.GroupLayout.PREFERRED_SIZE, 127, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(116, 116, 116)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(labelPredict, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(buttonPredict, javax.swing.GroupLayout.DEFAULT_SIZE, 118, Short.MAX_VALUE))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -208,7 +223,9 @@ public class Form extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(buttonAdd)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(buttonAdd)
+                            .addComponent(buttonSaveTrainningData))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(buttonTrain)
@@ -247,7 +264,33 @@ public class Form extends javax.swing.JFrame {
     }//GEN-LAST:event_buttonClearActionPerformed
 
     private void buttonAddActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonAddActionPerformed
-        String n = (String)listLabels.getSelectedValue();
+        int n = Integer.parseInt((String)listLabels.getSelectedValue());
+        BufferedImage drawingImage = drawingPanel.createImage();
+        Image scaledImage = drawingImage.getScaledInstance(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, Image.SCALE_FAST);
+        addImageToTrainningDataPanel(scaledImage, n);
+
+        this.drawingPanel.clearDraw();
+    }//GEN-LAST:event_buttonAddActionPerformed
+
+    
+    
+    private void drawingPanelPlaceholderMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_drawingPanelPlaceholderMouseExited
+
+    }//GEN-LAST:event_drawingPanelPlaceholderMouseExited
+
+    private void drawingPanelPlaceholderMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_drawingPanelPlaceholderMouseDragged
+
+    }//GEN-LAST:event_drawingPanelPlaceholderMouseDragged
+
+    private void buttonSaveTrainningDataActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonSaveTrainningDataActionPerformed
+        List<TrainningImageData> items = getTrainningDataFromImages();
+        File dst = new File("trainning_data.txt");
+        saveTrainningDataToFile(dst.getAbsolutePath(), items);
+        JOptionPane.showMessageDialog(this, "Data saved to " + dst.getAbsolutePath(), "Data saved", JOptionPane.INFORMATION_MESSAGE);
+    }//GEN-LAST:event_buttonSaveTrainningDataActionPerformed
+
+    private void addImageToTrainningDataPanel(Image image, int label) {
+        String n = String.valueOf(label);
         JPanel trainningPanel = this.trainningPanels.get(n);
         if(trainningPanel == null) {
             trainningPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -259,47 +302,124 @@ public class Form extends javax.swing.JFrame {
             this.trainningImagesCount++;
         }
         
-        BufferedImage drawingImage = drawingPanel.createImage();
-        Image scaledImage = drawingImage.getScaledInstance(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, Image.SCALE_FAST);
-        ImageIcon imageIcon = new ImageIcon(scaledImage);
+        ImageIcon imageIcon = new ImageIcon(image);
         JLabel imageLabel = new JLabel(imageIcon);
         trainningPanel.add(imageLabel);
-        this.trainningImages.get(n).add(scaledImage);
-
-        this.drawingPanel.clearDraw();
+        this.trainningImages.get(n).add(image);
         
         this.trainningPanelsContainer.validate();
         this.trainningPanelsContainer.repaint();
- 
-    }//GEN-LAST:event_buttonAddActionPerformed
-
-    private void drawingPanelPlaceholderMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_drawingPanelPlaceholderMouseExited
-
-    }//GEN-LAST:event_drawingPanelPlaceholderMouseExited
-
-    private void drawingPanelPlaceholderMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_drawingPanelPlaceholderMouseDragged
-
-    }//GEN-LAST:event_drawingPanelPlaceholderMouseDragged
-
+    }
     
-    private void trainNetwork() {
-        List<float[]> input = new ArrayList<>(this.trainningImagesCount);
-        int[] inputClass = new int[this.trainningImagesCount];
+    private void saveTrainningDataToFile(String path, List<TrainningImageData> items) {
+        BufferedWriter w = null;
+        try {
+            w = new BufferedWriter(new FileWriter(new File(path)));
+            for (TrainningImageData item : items) {
+                w.write(item.label + ":");
+                for (int i = 0; i < item.imgData.length; i++) {
+                    if(i > 0) {
+                        w.write(",");
+                    }
+                    w.write(String.valueOf(item.imgData[i]));
+                }
+                w.newLine();
+            }
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error saving trainning data", e);
+        } finally {
+            if(w != null) {
+                try {
+                    w.close();
+                } catch (Exception e) {
+                }
+            }
+        }
+    }
+    
+    private void loadTrainningDataPanelFromFile(String resourcePath) {
+        List<TrainningImageData> items = loadTrainningDataFromFile(resourcePath);
+        for (TrainningImageData item : items) {
+            
+            BufferedImage image = floatArrayToImage(item.imgData, TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT);
+            addImageToTrainningDataPanel(image, item.label);
+        }
+    }
+    
+    private List<TrainningImageData> loadTrainningDataFromFile(String resourcePath) {
+        List<TrainningImageData> list = new ArrayList<>();
         
+        InputStream input = this.getClass().getClassLoader().getResourceAsStream(resourcePath);
+        if(input == null) {
+            return list;
+        }
+        
+        BufferedReader r = null;
+        try {
+            r = new BufferedReader(new InputStreamReader(input));
+            String line;
+            while((line = r.readLine()) != null) {
+                line = line.trim();
+                if(line.isEmpty())
+                    continue;
+                
+                String[] parts = line.split(":");
+                String[] values = parts[1].split(",");
+                TrainningImageData item = new TrainningImageData();
+                item.label = Integer.parseInt(parts[0]);
+                item.imgData = new float[values.length];
+                for (int i = 0; i < values.length; i++) {
+                    item.imgData[i] = Float.parseFloat(values[i]);
+                }
+                list.add(item);
+            }
+            
+            return list;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error reading trainning data from file: " + resourcePath, e);
+        } finally {
+            if(r != null) {
+                try {
+                    r.close();
+                } catch (Exception e) {
+                }
+            }
+        }
+    }
+    
+    private List<TrainningImageData> getTrainningDataFromImages() {
+        List<TrainningImageData> list = new ArrayList<>(this.trainningImagesCount);
+         
         BufferedImage tempImg = new BufferedImage(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D tempImgG = tempImg.createGraphics();
-        int i = 0;
         for (Map.Entry<String, List<Image>> entry : trainningImages.entrySet()) {
-            int n = Integer.parseInt(entry.getKey());
+            int label = Integer.parseInt(entry.getKey());
             for (Image image : entry.getValue()) {
                 tempImgG.setPaint(Color.WHITE);
                 tempImgG.fillRect(0, 0, TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT);
                 tempImgG.drawImage(image, 0, 0, this);
                 
-                float[] imgData = imageToFloatArray(tempImg);
-                input.add(imgData);
-                inputClass[i++] = n;
+                TrainningImageData item = new TrainningImageData();
+                item.label = label;
+                item.imgData = imageToFloatArray(tempImg);
+                list.add(item);
             }
+        }
+         
+         return list;
+    }
+    
+    private void trainNetwork() {
+        List<TrainningImageData> items = getTrainningDataFromImages();
+        List<float[]> input = new ArrayList<>(items.size());
+        int[] inputClass = new int[items.size()];
+        
+        int i = 0;
+        for (TrainningImageData item : items) {
+            input.add(item.imgData);
+            inputClass[i++] = item.label;
         }
         
         this.neuralNetwork.train(input, inputClass, 10, 1, 1);
@@ -318,14 +438,35 @@ public class Form extends javax.swing.JFrame {
         
         for (int i = 0; i < pixels.length; i++) {
             int pixel = pixels[i];
-            Color c = new Color(pixel, true);
-            outputPixels[i] = (c.getRed() > 0) ? 1 : 0;
+            Color c = new Color(pixel, hasAlphaChannel);
+            int intensity = c.getRed() + c.getGreen() + c.getGreen();
+            outputPixels[i] = intensity == 0 ? 1 : 0;
         }
         
         return outputPixels;
     }
     
+    private BufferedImage floatArrayToImage(float[] data, int width, int height) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        int[] pixels = new int[data.length];
+        for (int i = 0; i < data.length; i++) {
+            float p = 1 - data[i];
+            int r = (int)(p * 255);
+            int g = (int)(p * 255);
+            int b = (int)(p * 255);
+            int a = (int)(1 * 255);
+            int c = ((a & 0xFF) << 24) |((r & 0xFF) << 16) | ((g & 0xFF) << 8)  | ((b & 0xFF) << 0);
+            pixels[i] = c;
+        }
+        image.setRGB(0, 0, width, height, pixels, 0, width);
+        
+        return image;
+    }
     
+    private class TrainningImageData {
+        public float[] imgData;
+        public int label;
+    }
     
     
     
@@ -369,6 +510,7 @@ public class Form extends javax.swing.JFrame {
     private javax.swing.JButton buttonAdd;
     private javax.swing.JButton buttonClear;
     private javax.swing.JButton buttonPredict;
+    private javax.swing.JButton buttonSaveTrainningData;
     private javax.swing.JButton buttonTrain;
     private javax.swing.JPanel drawingPanelPlaceholder;
     private javax.swing.JScrollPane jScrollPane1;

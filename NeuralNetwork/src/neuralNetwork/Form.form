@@ -36,22 +36,19 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="jScrollPane1" min="-2" pref="76" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Component id="buttonAdd" pref="76" max="32767" attributes="0"/>
+                          <Component id="buttonClear" max="32767" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" attributes="0">
-                              <Component id="buttonClear" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace min="-2" pref="108" max="-2" attributes="0"/>
-                              <Component id="buttonTrain" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace min="-2" pref="26" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="labelPredict" max="32767" attributes="0"/>
-                                  <Component id="buttonPredict" pref="118" max="32767" attributes="0"/>
-                              </Group>
-                              <EmptySpace pref="18" max="32767" attributes="0"/>
-                          </Group>
-                          <Group type="102" attributes="0">
-                              <Component id="buttonAdd" min="-2" pref="76" max="-2" attributes="0"/>
-                              <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
-                          </Group>
+                          <Component id="buttonSaveTrainningData" min="-2" max="-2" attributes="0"/>
+                          <Component id="buttonTrain" min="-2" pref="127" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace min="-2" pref="116" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Component id="labelPredict" max="32767" attributes="0"/>
+                          <Component id="buttonPredict" pref="118" max="32767" attributes="0"/>
                       </Group>
                   </Group>
               </Group>
@@ -65,7 +62,10 @@
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" max="-2" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
-                      <Component id="buttonAdd" min="-2" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="buttonAdd" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="buttonSaveTrainningData" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="buttonTrain" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -225,5 +225,13 @@
         </Container>
       </SubComponents>
     </Container>
+    <Component class="javax.swing.JButton" name="buttonSaveTrainningData">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Save trainning data"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="buttonSaveTrainningDataActionPerformed"/>
+      </Events>
+    </Component>
   </SubComponents>
 </Form>
