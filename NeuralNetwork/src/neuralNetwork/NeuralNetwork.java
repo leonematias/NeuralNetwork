@@ -121,20 +121,22 @@ public class NeuralNetwork {
         
         //Divide gradient by m
         int m = input.size();
-        mul(theta0Grad, 1/m);
-        mul(theta1Grad, 1/m);
+        float oneDivM = 1.0f/m;
+        mul(theta0Grad, oneDivM);
+        mul(theta1Grad, oneDivM);
         
         //Regularized theta0Grad: theta0Grad + (lambda/m) * theta0
+        float lambdaDivM = lambda/m;
         for (int i = 0; i < theta0Grad.length; i++) {
             for (int j = 1; j < theta0Grad[i].length; j++) {
-                theta0Grad[i][j] += (lambda/m) * theta0[i][j];
+                theta0Grad[i][j] += lambdaDivM * theta0[i][j];
             }
         }
         
         //Regularized theta1Grad: theta1Grad + (lambda/m) * theta1
         for (int i = 0; i < theta1Grad.length; i++) {
             for (int j = 1; j < theta1Grad[i].length; j++) {
-                theta1Grad[i][j] += (lambda/m) * theta1[i][j];
+                theta1Grad[i][j] += lambdaDivM * theta1[i][j];
             }
         }
     }

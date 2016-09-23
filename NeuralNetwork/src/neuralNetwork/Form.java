@@ -145,12 +145,11 @@ public class Form extends javax.swing.JFrame {
         });
 
         listLabels.setModel(new javax.swing.AbstractListModel() {
-            String[] strings = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10" };
+            String[] strings = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
             public int getSize() { return strings.length; }
             public Object getElementAt(int i) { return strings[i]; }
         });
         listLabels.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        listLabels.setSelectedIndex(0);
         jScrollPane1.setViewportView(listLabels);
 
         buttonTrain.setText("Train network");
@@ -222,7 +221,7 @@ public class Form extends javax.swing.JFrame {
                         .addGap(116, 116, 116)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(labelPredict, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(buttonPredict, javax.swing.GroupLayout.PREFERRED_SIZE, 118, Short.MAX_VALUE)
+                            .addComponent(buttonPredict, javax.swing.GroupLayout.DEFAULT_SIZE, 118, Short.MAX_VALUE)
                             .addComponent(labelConfidence, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 .addContainerGap())
         );
@@ -441,7 +440,7 @@ public class Form extends javax.swing.JFrame {
             inputClass[i++] = item.label;
         }
         
-        this.neuralNetwork.train(input, inputClass, 10, 1, 1);
+        this.neuralNetwork.train(input, inputClass, 1000, 0.01f, 1);
         
         JOptionPane.showMessageDialog(this, "Trainning is done");
     }
