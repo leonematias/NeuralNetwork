@@ -33,22 +33,30 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 /**
- *
+ * Main UI
+ * 
  * @author Matias Leone
  */
 public class Form extends javax.swing.JFrame {
 
-    private final static int DRAWING_PANEL_WIDTH = 200;
-    private final static int DRAWING_PANEL_HEIGHT = 200;
-    
+    //Parameters
     private final static int TRAINNING_IMG_WIDTH = 20;
     private final static int TRAINNING_IMG_HEIGHT = 20;
+    private final static int GRADIENT_DESCENT_ITER = 500;
+    private final static float ALPHA = 0.01f;
+    private final static float LAMBDA = 1;
+    private final static int INPUT_LAYER_SIZE = TRAINNING_IMG_WIDTH * TRAINNING_IMG_HEIGHT;
+    private final static int HIDDEN_LAYER_SIZE = 25;
+    private final static int OUTPUT_LAYER_SIZE = 10;
+
     
     private DrawingPanel drawingPanel;
     private Map<String, JPanel> trainningPanels;
     private Map<String, List<Image>> trainningImages;
     private NeuralNetwork neuralNetwork;
     private int trainningImagesCount;
+    private BufferedImage tempImg;
+    private Graphics2D tempImgG;
     
     /**
      * Creates new form Form
@@ -66,10 +74,67 @@ public class Form extends javax.swing.JFrame {
         this.trainningImages = new HashMap<>();
         this.trainningImagesCount = 0;
         
-        this.neuralNetwork = new NeuralNetwork(400, 25, 10);
+        this.neuralNetwork = new NeuralNetwork(INPUT_LAYER_SIZE, HIDDEN_LAYER_SIZE, OUTPUT_LAYER_SIZE);
+        
+        tempImg = new BufferedImage(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        tempImgG = tempImg.createGraphics();
         
         loadTrainningDataPanelFromFile("data/trainning_data.txt");
     }
+    
+    private void trainNetwork() {
+        
+        List<TrainningImageData> items = getTrainningDataFromImages();
+        List<float[]> input = new ArrayList<>(items.size());
+        int[] inputClass = new int[items.size()];
+        
+        int i = 0;
+        for (TrainningImageData item : items) {
+            input.add(item.imgData);
+            inputClass[i++] = item.label;
+        }
+        
+        
+        /*
+        List<float[]> input = new ArrayList<>();
+        int[] inputClass = new int[2];
+        
+        input.add(new float[]{1, 0, 0});
+        inputClass[0] = 0;
+        
+        input.add(new float[]{0, 0, 1});
+        inputClass[1] = 1;
+        */
+        
+        //Train
+        this.neuralNetwork.train(input, inputClass, GRADIENT_DESCENT_ITER, ALPHA, LAMBDA);
+        JOptionPane.showMessageDialog(this, "Trainning is done");
+    }
+    
+    private void predict() {
+        Image image = getImageFromDrawingPanel();
+                
+        float[] imgData = drawToTempImageAndGetArray(image);
+        
+
+        //float[] imgData = new float[]{1, 0, 0};
+        
+        
+        NeuralNetwork.Result result = neuralNetwork.predict(imgData);
+        int n = result.predictedClass;
+        
+        labelPredict.setText(String.valueOf(n));
+        labelConfidence.setText(String.valueOf(result.confidence));
+        
+    }
+    
+    
+    
+    
+    
+    
+    
+    
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -410,18 +475,12 @@ public class Form extends javax.swing.JFrame {
     private List<TrainningImageData> getTrainningDataFromImages() {
         List<TrainningImageData> list = new ArrayList<>(this.trainningImagesCount);
          
-        BufferedImage tempImg = new BufferedImage(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D tempImgG = tempImg.createGraphics();
         for (Map.Entry<String, List<Image>> entry : trainningImages.entrySet()) {
             int label = Integer.parseInt(entry.getKey());
             for (Image image : entry.getValue()) {
-                tempImgG.setPaint(Color.WHITE);
-                tempImgG.fillRect(0, 0, TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT);
-                tempImgG.drawImage(image, 0, 0, this);
-                
                 TrainningImageData item = new TrainningImageData();
                 item.label = label;
-                item.imgData = imageToFloatArray(tempImg);
+                item.imgData = drawToTempImageAndGetArray(image);
                 list.add(item);
             }
         }
@@ -429,39 +488,16 @@ public class Form extends javax.swing.JFrame {
          return list;
     }
     
-    private void trainNetwork() {
-        List<TrainningImageData> items = getTrainningDataFromImages();
-        List<float[]> input = new ArrayList<>(items.size());
-        int[] inputClass = new int[items.size()];
-        
-        int i = 0;
-        for (TrainningImageData item : items) {
-            input.add(item.imgData);
-            inputClass[i++] = item.label;
-        }
-        
-        this.neuralNetwork.train(input, inputClass, 1000, 0.01f, 1);
-        
-        JOptionPane.showMessageDialog(this, "Trainning is done");
-    }
-    
-    private void predict() {
-        Image image = getImageFromDrawingPanel();
-        
-        BufferedImage tempImg = new BufferedImage(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D tempImgG = tempImg.createGraphics();
+    private float[] drawToTempImageAndGetArray(Image image) {
+        //Clear
         tempImgG.setPaint(Color.WHITE);
         tempImgG.fillRect(0, 0, TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT);
+        
+        //Draw image
         tempImgG.drawImage(image, 0, 0, this);
-                
-        float[] imgData = imageToFloatArray(tempImg);
         
-        NeuralNetwork.Result result = neuralNetwork.predict(imgData);
-        int n = result.predictedClass;
-        
-        labelPredict.setText(String.valueOf(n));
-        labelConfidence.setText(String.valueOf(result.confidence));
-        
+        //Get array
+        return imageToFloatArray(tempImg);
     }
     
     

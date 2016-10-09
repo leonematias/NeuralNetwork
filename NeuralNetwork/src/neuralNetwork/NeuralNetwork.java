@@ -1,15 +1,12 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package neuralNetwork;
 
 import java.util.Arrays;
 import java.util.List;
 
 /**
- *
+ * Neural Network with one hidden layer.
+ * Trainning is done with gradient descent with regularization.
+ * 
  * @author Matias Leone
  */
 public class NeuralNetwork {
@@ -31,12 +28,10 @@ public class NeuralNetwork {
     private final float[] delta1;
     private final float[] delta2;
     private final float[] y;
-    
-    /*
-        Theta0 has size 25 x 401
-        Theta1 has size 10 x 26
-    */
-    
+
+    /**
+     * Define network topology
+     */
     public NeuralNetwork(int inputLayerSize, int internalLayerSize, int outputLayerSize) {
         this.inputLayerSize = inputLayerSize;
         this.internalLayerSize = internalLayerSize;
@@ -56,19 +51,17 @@ public class NeuralNetwork {
     
     
     
-    
+    /**
+     * Train neural network with the given input an expected inputClass.
+     * Use gradient descent to minimize cost of weights in theta0 and theta1
+     */
     public void train(List<float[]> input, int[] inputClass, int iterations, float alpha, float lambda) {
-        //Init theta0 and theta1 with random values
-        for (int i = 0; i < theta0.length; i++) {
-            for (int j = 0; j < theta0[i].length; j++) {
-                theta0[i][j] = (float)Math.random() * 2 * RAND_EPSILON - RAND_EPSILON;
-            }
-        }
-        for (int i = 0; i < theta1.length; i++) {
-            for (int j = 0; j < theta1[i].length; j++) {
-                theta1[i][j] = (float)Math.random() * 2 * RAND_EPSILON - RAND_EPSILON;
-            }
-        }
+        if(input.size() != inputClass.length)
+            throw new RuntimeException("Invalid input size");
+        
+        //Init theta0 and and theta1 with random values
+        randomInit(theta0, RAND_EPSILON);
+        randomInit(theta1, RAND_EPSILON);
         
         //Init theta temp variables
         float[][] theta0Temp = new float[internalLayerSize][inputLayerSize + 1];
@@ -82,12 +75,14 @@ public class NeuralNetwork {
         set(theta0Grad, 0);
         set(theta1Grad, 0);
         
+        //Init cost
+        float minCost = 0;
         
         //Perform gradient descent
         for (int n = 0; n < iterations; n++) {
             
-            //Compute gradient with current theta
-            computeGradient(input, inputClass, theta0, theta1, lambda, theta0Grad, theta1Grad);
+            //Compute gradient and cost with current theta
+            float cost = computeGradient(input, inputClass, theta0, theta1, lambda, theta0Grad, theta1Grad);
             
             //Update theta0 in temp variable
             for (int i = 0; i < theta0Temp.length; i++) {
@@ -106,17 +101,24 @@ public class NeuralNetwork {
             //Set theta0 and theta1
             set(theta0, theta0Temp);
             set(theta1, theta1Temp);
+            
+            //Update current cost
+            minCost = cost;
+            
+            //System.out.println(n + ") Cost: " + minCost);
         }
     }
     
-    
-    private void computeGradient(List<float[]> input, int[] inputClass, float[][] theta0, float[][] theta1, float lambda, float[][] theta0Grad, float[][] theta1Grad) {
-        
-        //Compute theta0Grad and theta1Grad for inputs
+    /**
+     * Compute gradient (theta0Grad, theta1Grad) and cost for the given input
+     */
+    private float computeGradient(List<float[]> input, int[] inputClass, float[][] theta0, float[][] theta1, float lambda, float[][] theta0Grad, float[][] theta1Grad) {
+        //Compute theta0Grad, theta1Grad and cost for inputs
+        float cost = 0;
         for (int i = 0; i < input.size(); i++) {
             float[] currentInput = input.get(i);
             int currentInputClass = inputClass[i];
-            accumulateGradient(currentInput, currentInputClass, theta0, theta1, theta0Grad, theta1Grad);
+            cost += accumulateGradient(currentInput, currentInputClass, theta0, theta1, theta0Grad, theta1Grad);
         }
         
         //Divide gradient by m
@@ -125,41 +127,64 @@ public class NeuralNetwork {
         mul(theta0Grad, oneDivM);
         mul(theta1Grad, oneDivM);
         
+        //Divde cost by m
+        cost = cost * oneDivM;
+        
         //Regularized theta0Grad: theta0Grad + (lambda/m) * theta0
+        float regularizedCost = 0;
         float lambdaDivM = lambda/m;
         for (int i = 0; i < theta0Grad.length; i++) {
             for (int j = 1; j < theta0Grad[i].length; j++) {
-                theta0Grad[i][j] += lambdaDivM * theta0[i][j];
+                float v = theta0[i][j];
+                theta0Grad[i][j] += lambdaDivM * v;
+                regularizedCost += v * v;
             }
         }
         
         //Regularized theta1Grad: theta1Grad + (lambda/m) * theta1
         for (int i = 0; i < theta1Grad.length; i++) {
             for (int j = 1; j < theta1Grad[i].length; j++) {
-                theta1Grad[i][j] += lambdaDivM * theta1[i][j];
+                float v = theta1[i][j];
+                theta1Grad[i][j] += lambdaDivM * v;
+                regularizedCost += v * v;
             }
         }
+        
+        //Add regularization to cost: J = J + lambda/2m * JReg
+        cost += (lambda / (2.0f * m)) * regularizedCost;
+        
+        return cost;
     }
     
     
     
     
-    private void accumulateGradient(float[] input, int inputClass, float[][] theta0, float[][] theta1, float[][] theta0Grad, float[][] theta1Grad) {
+    private float accumulateGradient(float[] input, int inputClass, float[][] theta0, float[][] theta1, float[][] theta0Grad, float[][] theta1Grad) {
+        if(inputClass < 0 || inputClass >= outputLayerSize)
+            throw new RuntimeException("Invalid inputClass: " + inputClass);
+        
         //Feedforward pass
         feedForward(input);
         
         //Create y vector using class
         set1InIndex(y, inputClass);
         
+        //Compute accumulated cost
+        float cost = 0;
+        for (int i = 0; i < y.length; i++) {
+            cost += -y[i] * Math.log(a2[i]) - (1 - y[i]) * Math.log(1 - a2[i]);
+        }
+        
+        
         //Compute delta2 as: a2 - y
         for (int i = 0; i < delta2.length; i++) {
             delta2[i] = a2[i] - y[i];
         }
         
-        //Compute delta1 as: theta1' * delta2 * sigmoidDeriv(z2)
+        //Compute delta1 as: theta1' * delta2 * sigmoidDeriv(z1)
         for (int i = 0; i < theta1.length; i++) {
-            for (int j = 0; j < theta1[i].length; j++) {
-                delta1[j] = theta1[i][j] * delta2[i] * sigmoidDeriv(z2[i]);
+            for (int j = 1; j < theta1[i].length; j++) {
+                delta1[j] = theta1[i][j] * delta2[i] * sigmoidDeriv(z1[i]);
             }
         }
         
@@ -177,8 +202,13 @@ public class NeuralNetwork {
                 theta1Grad[i][j] += delta2[i] * a1[j - 1];
             }
         }
+        
+        return cost;
     }
     
+    /**
+     * Predit symbol for the given input using trainned network
+     */
     public Result predict(float[] input) {
         //Feedforward pass
         feedForward(input);
@@ -191,6 +221,9 @@ public class NeuralNetwork {
     
     
     private void feedForward(float[] input) {
+        if(input.length != inputLayerSize)
+            throw new RuntimeException("Invalid input size: " + input.length);
+        
         //z1
         for (int i = 0; i < z1.length; i++) {
             z1[i] = theta0[i][0] * 1;
@@ -263,6 +296,15 @@ public class NeuralNetwork {
         }
     }
     
+    private void randomInit(float[][] m, float epsilon) {
+        float epsilon2 = 2 * epsilon;
+        for (int i = 0; i < m.length; i++) {
+            for (int j = 0; j < m[i].length; j++) {
+                m[i][j] = (float)Math.random() * epsilon2 - epsilon;
+            }
+        }
+    }
+    
     private void set1InIndex(float[] y, int index) {
         set(y, 0);
         y[index] = 1;
@@ -280,6 +322,9 @@ public class NeuralNetwork {
         }
     }
     
+    /**
+     * Prediction result
+     */
     public static class Result {
         public final int predictedClass;
         public final float confidence;
@@ -288,8 +333,7 @@ public class NeuralNetwork {
             this.predictedClass = predictedClass;
             this.confidence = confidence;
         }
-        
-        
+
     }
     
 }
