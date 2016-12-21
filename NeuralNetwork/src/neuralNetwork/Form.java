@@ -54,6 +54,7 @@ public class Form extends javax.swing.JFrame {
     private Map<String, JPanel> trainningPanels;
     private Map<String, List<Image>> trainningImages;
     private NeuralNetwork neuralNetwork;
+    private LogisticRegression logisticRegression;
     private int trainningImagesCount;
     private BufferedImage tempImg;
     private Graphics2D tempImgG;
@@ -75,6 +76,7 @@ public class Form extends javax.swing.JFrame {
         this.trainningImagesCount = 0;
         
         this.neuralNetwork = new NeuralNetwork(INPUT_LAYER_SIZE, HIDDEN_LAYER_SIZE, OUTPUT_LAYER_SIZE);
+        this.logisticRegression = new LogisticRegression(INPUT_LAYER_SIZE, OUTPUT_LAYER_SIZE, ALPHA, GRADIENT_DESCENT_ITER);
         
         tempImg = new BufferedImage(TRAINNING_IMG_WIDTH, TRAINNING_IMG_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         tempImgG = tempImg.createGraphics();
@@ -107,7 +109,18 @@ public class Form extends javax.swing.JFrame {
         */
         
         //Train
-        this.neuralNetwork.train(input, inputClass, GRADIENT_DESCENT_ITER, ALPHA, LAMBDA);
+        //this.neuralNetwork.train(input, inputClass, GRADIENT_DESCENT_ITER, ALPHA, LAMBDA);
+        
+        
+        List<LogisticRegression.Input> inputData = new ArrayList<>(items.size());
+        for (TrainningImageData item : items) {
+            inputData.add(new LogisticRegression.Input(item.imgData, item.label));
+        }
+        this.logisticRegression.train(inputData);
+        
+        
+        
+        
         JOptionPane.showMessageDialog(this, "Trainning is done");
     }
     
@@ -120,11 +133,15 @@ public class Form extends javax.swing.JFrame {
         //float[] imgData = new float[]{1, 0, 0};
         
         
+        /*
         NeuralNetwork.Result result = neuralNetwork.predict(imgData);
         int n = result.predictedClass;
+        */
+        
+        int n = logisticRegression.predict(imgData);
         
         labelPredict.setText(String.valueOf(n));
-        labelConfidence.setText(String.valueOf(result.confidence));
+        //labelConfidence.setText(String.valueOf(result.confidence));
         
     }
     
