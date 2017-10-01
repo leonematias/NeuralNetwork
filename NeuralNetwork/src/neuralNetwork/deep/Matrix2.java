@@ -20,10 +20,14 @@ public class Matrix2 {
         this.data = new float[rows * cols];
     }
     
-    public static Matrix2 zeros(int rows, int cols) {
+    public static Matrix2 fromValue(int rows, int cols, float v) {
         Matrix2 m = new Matrix2(rows, cols);
-        Arrays.fill(m.data, 0);
+        Arrays.fill(m.data, v);
         return m;
+    }
+    
+    public static Matrix2 zeros(int rows, int cols) {
+        return fromValue(rows, cols, 0);
     }
     
     public static Matrix2 random(int rows, int cols) {
@@ -85,6 +89,18 @@ public class Matrix2 {
         return apply(new DivOp(s));
     }
     
+    public Matrix2 scalarMinus(float s) {
+        return apply(new ScalarMinusOp(s));
+    }
+    
+    public Matrix2 oneMinus() {
+        return apply(ScalarMinusOp.ONE_MINUS);
+    }
+    
+    public Matrix2 log() {
+        return apply(LogOp.INSTANCE);
+    }
+    
     public Matrix2 mul(Matrix2 m) {
         return Matrix2.mul(this, m);
     }
@@ -124,6 +140,18 @@ public class Matrix2 {
             for (int row = 0; row < rows; row++) {
                 m.data[pos(row, col)] = this.data[pos(0, col)];
             }
+        }
+        return m;
+    }
+    
+    public Matrix2 sumColumns() {
+        Matrix2 m = new Matrix2(this.rows, 1);
+        for (int row = 0; row < this.rows; row++) {
+            int sum = 0;
+            for (int col = 0; col < this.cols; col++) {
+                sum += this.data[this.pos(row, col)];
+            }
+            m.data[m.pos(row, 0)] = sum;
         }
         return m;
     }
@@ -186,6 +214,35 @@ public class Matrix2 {
         return a.rows == b.rows && a.cols == b.cols;
     }
     
+    public static Matrix2 mulEW(Matrix2 a, Matrix2 b) {
+        if(a.cols != b.rows)
+            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
+        
+        Matrix2 c = a.emptyCopy();
+        for (int row = 0; row < a.rows; row++) {
+            for (int col = 0; col < a.cols; col++) {
+                int pos = a.pos(row, col);
+                c.data[pos] = a.data[pos] * b.data[pos];
+            }
+        }
+        return c;
+    }
+    
+    public static Matrix2 divEW(Matrix2 a, Matrix2 b) {
+        if(a.cols != b.rows)
+            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
+        
+        Matrix2 c = a.emptyCopy();
+        for (int row = 0; row < a.rows; row++) {
+            for (int col = 0; col < a.cols; col++) {
+                int pos = a.pos(row, col);
+                c.data[pos] = a.data[pos] / b.data[pos];
+            }
+        }
+        return c;
+    }
+
+    
     
     /**
      * Element wise operation
@@ -246,6 +303,41 @@ public class Matrix2 {
         @Override
         public float apply(float v) {
             return v / s;
+        }
+    }
+    
+    public static class ScalarMinusOp extends ScalarOp {
+        public static final ScalarMinusOp ONE_MINUS = new ScalarMinusOp(1);
+        public ScalarMinusOp(float s) {
+            super(s);
+        }
+        @Override
+        public float apply(float v) {
+            return s - v;
+        }
+    }
+    
+    public static class SigmoidOp implements ElementWiseOp {
+        public static final SigmoidOp INSTANCE = new SigmoidOp();
+        @Override
+        public float apply(float v) {
+            return 1 / (1 + (float)Math.exp(-v));
+        }
+    }
+    
+    public static class ReluOp implements ElementWiseOp {
+        public static final ReluOp INSTANCE = new ReluOp();
+        @Override
+        public float apply(float v) {
+            return Math.max(0, v);
+        }
+    }
+    
+    public static class LogOp implements ElementWiseOp {
+        public static final LogOp INSTANCE = new LogOp();
+        @Override
+        public float apply(float v) {
+            return (float)Math.log(v);
         }
     }
     
