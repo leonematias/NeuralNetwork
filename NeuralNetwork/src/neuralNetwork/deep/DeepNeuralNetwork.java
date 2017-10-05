@@ -31,7 +31,7 @@ public class DeepNeuralNetwork {
         
     }
     
-    private void doTrain(Matrix2 X, Matrix2 Y, int iterations, float learningRate, boolean printCost) {
+    private Map<String, Matrix2> doTrain(Matrix2 X, Matrix2 Y, int iterations, float learningRate, boolean printCost) {
         int m = X.cols();
         
         //Initialize parameters
@@ -54,8 +54,19 @@ public class DeepNeuralNetwork {
             
             //Backward propagation
             grads = modelBackward(AL, Y, caches, L, grads);
+            
+            //Update parameters
+            updateParameters(parameters, grads, learningRate);
+            
+            //print cost
+            if(printCost) {
+                
+            }
+            
+            
         }
         
+        return parameters;
     }
     
     
@@ -65,12 +76,12 @@ public class DeepNeuralNetwork {
      */
     private Map<String, Matrix2> initializeParameters(int[] layerDims) {
         Map<String, Matrix2> parameters = new HashMap<>(layerDims.length * 2);
-        for (int i = 1; i < layerDims.length; i++) {
-            String iStr = String.valueOf(i);
-            int rows = layerDims[i];
-            int cols = layerDims[i - 1];
-            parameters.put("W" + iStr, Matrix2.random(rows, cols).mul(0.01f));
-            parameters.put("b" + iStr, Matrix2.zeros(rows, 1));
+        for (int l = 1; l < layerDims.length; l++) {
+            String layerIdx = String.valueOf(l);
+            int rows = layerDims[l];
+            int cols = layerDims[l - 1];
+            parameters.put("W" + layerIdx, Matrix2.random(rows, cols).mul(0.01f));
+            parameters.put("b" + layerIdx, Matrix2.zeros(rows, 1));
         }
         return parameters;
     }
@@ -85,9 +96,9 @@ public class DeepNeuralNetwork {
         //Linear-Relu pass for all layers except the last one
         for (int l = 1; l < L; l++) {
             Matrix2 A_prev = A;
-            String iStr = String.valueOf(l);
-            Matrix2 W = parameters.get("W" + iStr);
-            Matrix2 b = parameters.get("b" + iStr);
+            String layerIdx = String.valueOf(l);
+            Matrix2 W = parameters.get("W" + layerIdx);
+            Matrix2 b = parameters.get("b" + layerIdx);
             A = linearActivationForward(A_prev, W, b, Matrix2.ReluOp.INSTANCE, caches);
         }
         
@@ -114,7 +125,7 @@ public class DeepNeuralNetwork {
     }
     
     /**
-     * Linaer forward pass: Z = W * A + b
+     * Linear forward pass: Z = W * A + b
      */
     private Matrix2 linearForward(Matrix2 A, Matrix2 W, Matrix2 b) {
         //Z = W * A + b;
@@ -140,27 +151,93 @@ public class DeepNeuralNetwork {
     
     private Map<String, Matrix2> modelBackward(Matrix2 AL, Matrix2 Y, List<CacheItem> caches, int L, Map<String, Matrix2> grads) {
         int m = Y.cols();
+        CacheItem cache;
+        String layerIdx;
+        BackpropResult res;
         
+        //Compute sigmoid gradient for last layer
         //dAL = - (np.divide(Y, AL) - np.divide(1-Y, 1-AL))
         Matrix2 dAL = Matrix2.divEW(Y, AL).sub(Matrix2.divEW(Y.oneMinus(), AL.oneMinus())).mul(-1);
+        cache = caches.get(L - 1);
+        res = linearActivationBackward(dAL, cache, SigmoidBackward.INSTANCE);
+        layerIdx = String.valueOf(L);
+        grads.put("dA" + layerIdx, res.dA);
+        grads.put("dW" + layerIdx, res.dW);
+        grads.put("db" + layerIdx, res.db);
         
-        CacheItem currentCache = caches.get(L - 1);
-        
+        //Compute relu gradients for all other layers
+        for (int l = L - 1; l >= 0; l--) {
+            layerIdx = String.valueOf(l + 1);
+            cache = caches.get(l);
+            Matrix2 dA_current = grads.get("dA" + (l + 2));
+            res = linearActivationBackward(dA_current, cache, ReluBackward.INSTANCE);
+            grads.put("dA" + layerIdx, res.dA);
+            grads.put("dW" + layerIdx, res.dW);
+            grads.put("db" + layerIdx, res.db);
+        }
         
         return grads;
     }
     
-    private void linearBackward(Matrix2 dZ, LinearCache cache) {
-        
-        //return dA_prev, dW, db
+    private BackpropResult linearActivationBackward(Matrix2 dA, CacheItem cache, BackwardOp activation) {
+        Matrix2 dZ = activation.apply(dA, cache.activationCache);    
+        BackpropResult res = linearBackward(dZ, cache.linearCache); 
+        return new BackpropResult(res.dA, res.dW, res.db);
     }
     
-    private void linearActivationBackward(Matrix2 dA, CacheItem cache, String activation) {
+    private BackpropResult linearBackward(Matrix2 dZ, LinearCache cache) {
+        int m = cache.A.cols();
         
-        //return dA_prev, dW, db
+        //dW = 1/m * np.dot(dZ, A_prev.T)
+        Matrix2 dW = dZ.mul(cache.A.transpose()).mul(1/m);
+        
+        //db = 1/m * np.sum(dZ, axis=1, keepdims=True)
+        Matrix2 db = dZ.sumColumns().mul(1/m);
+        
+        //dA_prev = np.dot(W.T, dZ)
+        Matrix2 dAprev = cache.W.transpose().mul(dZ);
+        
+        return new BackpropResult(dAprev, dW, db);
     }
     
     
+    
+    
+    
+    
+    
+    interface BackwardOp {
+        Matrix2 apply(Matrix2 dA, ActivationCache cache);
+    }
+    
+    private static class ReluBackward implements BackwardOp {
+        public static final BackwardOp INSTANCE = new ReluBackward();
+        @Override
+        public Matrix2 apply(Matrix2 dA, ActivationCache cache) {
+            //dz = 0 if z <= 0
+            Matrix2 dZ = dA.apply(new Matrix2.ElementWiseOp() {
+                @Override
+                public float apply(float z) {
+                    return z <= 0 ? 0 : z;
+                }
+            });
+            return dZ;
+        } 
+    }
+    
+    private static class SigmoidBackward implements BackwardOp {
+        public static final BackwardOp INSTANCE = new SigmoidBackward();
+        @Override
+        public Matrix2 apply(Matrix2 dA, ActivationCache cache) {
+            //S = 1 / (1 + e^(-Z))
+            Matrix2 S = cache.Z.sigmoid();
+
+            //dZ = dA * s * (1-s)
+            Matrix2 dZ = dA.mulEW(S).mulEW(S.oneMinus());
+
+            return dZ;
+        } 
+    }
     
     private static class CacheItem {
         public final LinearCache linearCache;
@@ -187,6 +264,17 @@ public class DeepNeuralNetwork {
         public ActivationCache(Matrix2 Z) {
             this.Z = Z;
         }
+    }
+    
+    public static class BackpropResult {
+        public final Matrix2 dA;
+        public final Matrix2 dW;
+        public final Matrix2 db;
+        public BackpropResult(Matrix2 dA, Matrix2 dW, Matrix2 db) {
+            this.dA = dA;
+            this.dW = dW;
+            this.db = db;
+        }  
     }
     
     

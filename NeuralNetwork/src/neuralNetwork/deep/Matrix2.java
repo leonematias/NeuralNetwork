@@ -101,6 +101,14 @@ public class Matrix2 {
         return apply(LogOp.INSTANCE);
     }
     
+    public Matrix2 sigmoid() {
+        return apply(SigmoidOp.INSTANCE);
+    }
+    
+    public Matrix2 relu() {
+        return apply(ReluOp.INSTANCE);
+    }
+    
     public Matrix2 mul(Matrix2 m) {
         return Matrix2.mul(this, m);
     }
@@ -111,6 +119,14 @@ public class Matrix2 {
     
     public Matrix2 sub(Matrix2 m) {
         return Matrix2.sub(this, m);
+    }
+    
+    public Matrix2 mulEW(Matrix2 m) {
+        return Matrix2.mulEW(this, m);
+    }
+    
+    public Matrix2 divEW(Matrix2 m) {
+        return Matrix2.divEW(this, m);
     }
 
     @Override
@@ -156,6 +172,9 @@ public class Matrix2 {
         return m;
     }
     
+    public Matrix2 transpose() {
+        return Matrix2.transpose(this);
+    }
     
     
     
@@ -240,6 +259,16 @@ public class Matrix2 {
             }
         }
         return c;
+    }
+    
+    public static Matrix2 transpose(Matrix2 m) {
+        Matrix2 t = m.emptyCopy();
+        for (int row = 0; row < m.rows; row++) {
+            for (int col = 0; col < m.cols; col++) {
+                t.data[t.pos(col, row)] = m.get(row, col);
+            }
+        }
+        return t;
     }
 
     
