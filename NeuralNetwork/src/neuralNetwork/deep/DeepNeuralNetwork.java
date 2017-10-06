@@ -18,27 +18,23 @@ import java.util.Map;
 public class DeepNeuralNetwork {
     
     private final int[] layerDims;
+    private final int iterations;
+    private final float learningRate;
+    private Map<String, Matrix2> parameters;
     
-    public DeepNeuralNetwork(int[] layerDims) {
+    public DeepNeuralNetwork(int[] layerDims, int iterations, float learningRate) {
         this.layerDims = layerDims;
-    }
-    
-    public void train() {
-        
+        this.iterations = iterations;
+        this.learningRate = learningRate;
     }
 
-    public void predict() {
-        
-    }
-    
-    private Map<String, Matrix2> doTrain(Matrix2 X, Matrix2 Y, int iterations, float learningRate, boolean printCost) {
+    public void train(Matrix2 X, Matrix2 Y, boolean printCost) {
         int m = X.cols();
         
         //Initialize parameters
-        Map<String, Matrix2> parameters = initializeParameters(this.layerDims);
+        this.parameters = initializeParameters(this.layerDims);
         
         //Gradient descent loop
-        Map<String, Matrix2> cache = new HashMap<>();
         List<CacheItem> caches = new ArrayList<>();
         Map<String, Matrix2> grads = new HashMap<>();
         int L = this.layerDims.length;
@@ -47,7 +43,7 @@ public class DeepNeuralNetwork {
             grads.clear();
             
             //Forward propagation
-            Matrix2 AL = modelForward(X, Y, parameters, L, caches);
+            Matrix2 AL = modelForward(X, parameters, L, caches);
             
             //Compute cost
             float cost = computeCost(AL, Y);
@@ -56,18 +52,28 @@ public class DeepNeuralNetwork {
             grads = modelBackward(AL, Y, caches, L, grads);
             
             //Update parameters
-            updateParameters(parameters, grads, learningRate);
+            updateParameters(parameters, grads, learningRate, L);
             
             //print cost
             if(printCost) {
-                
-            }
-            
-            
+                if(i % 100 == 0) {
+                    System.out.println("Cost after iteration " + i + ": " + cost);
+                }
+            }           
         }
-        
-        return parameters;
     }
+    
+    public Matrix2 predict(Matrix2 X) {
+        List<CacheItem> caches = new ArrayList<>();
+        int L = this.layerDims.length;
+        
+        Matrix2 AL = modelForward(X, parameters, L, caches);
+        
+        //AL > 0.5
+        return AL.greater(0.5f);
+    }
+    
+    
     
     
     
@@ -90,7 +96,7 @@ public class DeepNeuralNetwork {
      * Forward propagation for all layers.
      * Compute AL and store intermediate values in caches
      */
-    private Matrix2 modelForward(Matrix2 X, Matrix2 Y, Map<String, Matrix2> parameters, int L, List<CacheItem> caches) {
+    private Matrix2 modelForward(Matrix2 X, Map<String, Matrix2> parameters, int L, List<CacheItem> caches) {
         Matrix2 A = X;
         
         //Linear-Relu pass for all layers except the last one
@@ -199,9 +205,24 @@ public class DeepNeuralNetwork {
         
         return new BackpropResult(dAprev, dW, db);
     }
-    
-    
-    
+
+    private void updateParameters(Map<String, Matrix2> parameters, Map<String, Matrix2> grads, float learningRate, int L) {
+        for (int l = 1; l <= L; l++) {
+            String layerIdx = String.valueOf(l);
+            Matrix2 W = parameters.get("W" + layerIdx);
+            Matrix2 b = parameters.get("b" + layerIdx);
+            Matrix2 dW = grads.get("dW" + layerIdx);
+            Matrix2 db = grads.get("db" + layerIdx);
+            
+            //W = W - learningRate * dW
+            W = W.sub(dW.mul(learningRate));
+            b = b.sub(db.mul(learningRate));
+            
+            parameters.put("W" + layerIdx, W);
+            parameters.put("b" + layerIdx, b);
+        }
+    }
+
     
     
     

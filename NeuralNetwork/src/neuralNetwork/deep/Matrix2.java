@@ -1,6 +1,7 @@
 package neuralNetwork.deep;
 
 import java.util.Arrays;
+import java.util.Collection;
 
 /**
  * A nxm float immutable matrix.
@@ -15,9 +16,22 @@ public class Matrix2 {
     private final int cols;
     
     public Matrix2(int rows, int cols) {
+        if(rows < 1 || cols < 1)
+            throw new RuntimeException("Invalid shape (" + rows + ", " + cols + ")");
         this.rows = rows;
         this.cols = cols;
         this.data = new float[rows * cols];
+    }
+    
+    public Matrix2(int rows, int cols, float[] data) {
+        this(rows, cols);
+        if(data.length != this.data.length)
+            throw new RuntimeException("Invalid data length: " + data.length);
+        this.set(data);
+    }
+    
+    public Matrix2(float value) {
+        this(1, 1, new float[]{value});
     }
     
     public static Matrix2 fromValue(int rows, int cols, float v) {
@@ -32,6 +46,14 @@ public class Matrix2 {
     
     public static Matrix2 random(int rows, int cols) {
         return new Matrix2(rows, cols).apply(RandomOp.INSTANCE);
+    }
+    
+    private void set(int row, int col, int v) {
+        this.data[this.pos(row, col)] = v;
+    }
+    
+    private void set(float[] values) {
+        System.arraycopy(values, 0, this.data, 0, values.length);
     }
     
     private int pos(int row, int col) {
@@ -107,6 +129,14 @@ public class Matrix2 {
     
     public Matrix2 relu() {
         return apply(ReluOp.INSTANCE);
+    }
+    
+    public Matrix2 greater(float v) {
+        return apply(new GreaterOp(v));
+    }
+    
+    public Matrix2 lower(float v) {
+        return apply(new LowerOp(v));
     }
     
     public Matrix2 mul(Matrix2 m) {
@@ -270,6 +300,32 @@ public class Matrix2 {
         }
         return t;
     }
+    
+    public static Matrix2 appendColumns(Collection<Matrix2> list) {
+        int rows = 0;
+        int cols = 0;
+        for (Matrix2 m : list) {
+            if(rows == 0) {
+                rows = m.rows;
+            } else {
+                if(m.rows != rows)
+                    throw new RuntimeException("Invalid number of rows in: " + m);
+            }
+            cols += m.cols;
+        }
+        
+        Matrix2 r = new Matrix2(rows, cols);
+        int colIdx = 0;
+        for (Matrix2 m : list) {
+            for (int row = 0; row < m.rows; row++) {
+                for (int col = 0; col < m.cols; col++) {
+                    r.data[r.pos(row, colIdx + col)] = m.get(row, col);
+                }
+            }
+            colIdx += m.cols;
+        }
+        return r;
+    }
 
     
     
@@ -332,6 +388,26 @@ public class Matrix2 {
         @Override
         public float apply(float v) {
             return v / s;
+        }
+    }
+    
+    public static class GreaterOp extends ScalarOp {
+        public GreaterOp(float s) {
+            super(s);
+        }
+        @Override
+        public float apply(float v) {
+            return v > s ? 1f : 0f;
+        }
+    }
+    
+    public static class LowerOp extends ScalarOp {
+        public LowerOp(float s) {
+            super(s);
+        }
+        @Override
+        public float apply(float v) {
+            return v < s ? 1f : 0f;
         }
     }
     
