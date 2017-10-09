@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Use Mnist data to train binary classifier to predict images of 0 and 1 digits
@@ -46,7 +47,7 @@ public class TestMnistBinaryClassifier {
             digitImages.add(oneImages.get(i));
         }
         
-        
+        /*
         //Split train and test set
         List<ImageData> trainSet = new ArrayList<>();
         List<ImageData> testSet = new ArrayList<>();
@@ -60,7 +61,7 @@ public class TestMnistBinaryClassifier {
         
         
         //Train binary classifier with layers [400, 25, 10, 1]
-        DeepNeuralNetwork classifier = new DeepNeuralNetwork(new int[]{MNIST_IMG_WIDTH * MNIST_IMG_HEIGHT, 25, 10, 1}, 3000, 0.0075f);
+        DeepNeuralNetwork classifier = new DeepNeuralNetwork(new int[]{MNIST_IMG_WIDTH * MNIST_IMG_HEIGHT, 25, 10, 1}, 3000, 0.075f);
         classifier.train(trainX, trainY, true);
         
         //Predict train and test set
@@ -68,27 +69,37 @@ public class TestMnistBinaryClassifier {
         Matrix2 testYpred = classifier.predict(testX);
         System.out.println("Train set accuracy: " + accuracy(trainY, trainYpred));
         System.out.println("Test set accuracy: " + accuracy(testY, testYpred));
+        */
         
         
         
-        /*
         //Small network test case
-        List<ImageData> trainSet = new ArrayList<>(Arrays.asList(
-                new ImageData(new float[]{-1, 1}, 0),
-                new ImageData(new float[]{-2, -1}, 0),
-                new ImageData(new float[]{-3, 1}, 0),
-                new ImageData(new float[]{-4, -1}, 0),
+        List<ImageData> trainSet = new ArrayList<>();
+        Random rand = new Random();
+        for (int i = 0; i < 1000; i++) {
+            float px = -1 + rand.nextFloat() * 2;
+            float py = -1 + rand.nextFloat() * 2;
+            int label = px < 0 ? 0 : 1;
+            trainSet.add(new ImageData(new float[]{px, py}, label));
+        }
+        List<ImageData> testSet = new ArrayList<>(Arrays.asList(
+                new ImageData(new float[]{-0.1f, -1}, 0),
+                new ImageData(new float[]{-0.7f, 1}, 0),
                 
-                new ImageData(new float[]{1, 1}, 1),
-                new ImageData(new float[]{2, -1}, 1),
-                new ImageData(new float[]{3, 1}, 1),
-                new ImageData(new float[]{4, -1}, 1)
+                new ImageData(new float[]{0.2f, -1}, 1),
+                new ImageData(new float[]{0.9f, 0.5f}, 1)
         ));
         Matrix2 trainX = toX(trainSet);
         Matrix2 trainY = toY(trainSet);
-        DeepNeuralNetwork classifier = new DeepNeuralNetwork(new int[]{2, 1}, 3000, 0.0075f);
+        Matrix2 testX = toX(testSet);
+        Matrix2 testY = toY(testSet);
+        DeepNeuralNetwork classifier = new DeepNeuralNetwork(new int[]{2, 10, 1}, 3000, 1f);
         classifier.train(trainX, trainY, true);
-        */
+        Matrix2 trainYpred = classifier.predict(trainX);
+        Matrix2 testYpred = classifier.predict(testX);
+        System.out.println("Train set accuracy: " + accuracy(trainY, trainYpred));
+        System.out.println("Test set accuracy: " + accuracy(testY, testYpred));
+        
         
     }
     

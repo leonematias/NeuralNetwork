@@ -55,7 +55,7 @@ public class DeepNeuralNetwork {
             
             //print cost
             if(printCost) {
-                if(i % 100 == 0) {
+                if(i % 10 == 0) {
                     System.out.println("Cost after iteration " + i + ": " + cost);
                 }
             }           
@@ -164,9 +164,6 @@ public class DeepNeuralNetwork {
         //Compute sigmoid gradient for last layer
         //dAL = - (np.divide(Y, AL) - np.divide(1-Y, 1-AL))
         Matrix2 dAL = Matrix2.divEW(Y, AL).sub(Matrix2.divEW(Y.oneMinus(), AL.oneMinus())).mul(-1);
-        
-        
-        
         cache = caches.get(L - 1);
         res = linearActivationBackward(dAL, cache, SigmoidBackward.INSTANCE);
         layerIdx = String.valueOf(L);
