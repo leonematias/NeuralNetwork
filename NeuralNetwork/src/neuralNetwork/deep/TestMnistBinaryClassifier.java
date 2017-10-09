@@ -9,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -49,6 +50,11 @@ public class TestMnistBinaryClassifier {
         List<ImageData> trainSet = new ArrayList<>();
         List<ImageData> testSet = new ArrayList<>();
         splitDataSet(digitImages, 0.7f, trainSet, testSet);
+        
+        
+        //trainSet = new ArrayList<>(Arrays.asList(trainSet.get(0)));
+        
+        
         
         //Conver to X,Y matrices
         Matrix2 trainX = toX(trainSet);

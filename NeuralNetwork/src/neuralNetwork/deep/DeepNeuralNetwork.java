@@ -37,22 +37,21 @@ public class DeepNeuralNetwork {
         //Gradient descent loop
         List<CacheItem> caches = new ArrayList<>();
         Map<String, Matrix2> grads = new HashMap<>();
-        int L = this.layerDims.length;
         for (int i = 0; i < iterations; i++) {
             caches.clear();
             grads.clear();
             
             //Forward propagation
-            Matrix2 AL = modelForward(X, parameters, L, caches);
+            Matrix2 AL = modelForward(X, parameters, caches);
             
             //Compute cost
             float cost = computeCost(AL, Y);
             
             //Backward propagation
-            grads = modelBackward(AL, Y, caches, L, grads);
+            grads = modelBackward(AL, Y, caches, grads);
             
             //Update parameters
-            updateParameters(parameters, grads, learningRate, L);
+            updateParameters(parameters, grads, learningRate);
             
             //print cost
             if(printCost) {
@@ -65,9 +64,8 @@ public class DeepNeuralNetwork {
     
     public Matrix2 predict(Matrix2 X) {
         List<CacheItem> caches = new ArrayList<>();
-        int L = this.layerDims.length;
         
-        Matrix2 AL = modelForward(X, parameters, L, caches);
+        Matrix2 AL = modelForward(X, parameters, caches);
         
         //AL > 0.5
         return AL.greater(0.5f);
@@ -81,7 +79,7 @@ public class DeepNeuralNetwork {
      * Init W and b parameters for all layers
      */
     private Map<String, Matrix2> initializeParameters(int[] layerDims) {
-        Map<String, Matrix2> parameters = new HashMap<>(layerDims.length * 2);
+        Map<String, Matrix2> parameters = new HashMap<>((layerDims.length - 1) * 2);
         for (int l = 1; l < layerDims.length; l++) {
             String layerIdx = String.valueOf(l);
             int rows = layerDims[l];
@@ -96,8 +94,9 @@ public class DeepNeuralNetwork {
      * Forward propagation for all layers.
      * Compute AL and store intermediate values in caches
      */
-    private Matrix2 modelForward(Matrix2 X, Map<String, Matrix2> parameters, int L, List<CacheItem> caches) {
+    private Matrix2 modelForward(Matrix2 X, Map<String, Matrix2> parameters, List<CacheItem> caches) {
         Matrix2 A = X;
+        int L = parameters.size() / 2;
         
         //Linear-Relu pass for all layers except the last one
         for (int l = 1; l < L; l++) {
@@ -148,15 +147,16 @@ public class DeepNeuralNetwork {
         
         //cost = -1/m * np.sum(Y * np.log(AL) + (1-Y) * np.log(1-AL))
         float cost = Matrix2.add(
-                Matrix2.mulEW(Y, AL), 
+                Matrix2.mulEW(Y, AL.log()), 
                 Matrix2.mulEW(Y.oneMinus(), AL.oneMinus().log())
-        ).sumColumns().mul(-1/m).get(0,0);
+        ).sumColumns().mul(-1f/m).get(0,0);
         
         return cost;
     }
     
-    private Map<String, Matrix2> modelBackward(Matrix2 AL, Matrix2 Y, List<CacheItem> caches, int L, Map<String, Matrix2> grads) {
+    private Map<String, Matrix2> modelBackward(Matrix2 AL, Matrix2 Y, List<CacheItem> caches, Map<String, Matrix2> grads) {
         int m = Y.cols();
+        int L = caches.size();
         CacheItem cache;
         String layerIdx;
         BackpropResult res;
@@ -172,7 +172,7 @@ public class DeepNeuralNetwork {
         grads.put("db" + layerIdx, res.db);
         
         //Compute relu gradients for all other layers
-        for (int l = L - 1; l >= 0; l--) {
+        for (int l = L - 2; l >= 0; l--) {
             layerIdx = String.valueOf(l + 1);
             cache = caches.get(l);
             Matrix2 dA_current = grads.get("dA" + (l + 2));
@@ -206,7 +206,8 @@ public class DeepNeuralNetwork {
         return new BackpropResult(dAprev, dW, db);
     }
 
-    private void updateParameters(Map<String, Matrix2> parameters, Map<String, Matrix2> grads, float learningRate, int L) {
+    private void updateParameters(Map<String, Matrix2> parameters, Map<String, Matrix2> grads, float learningRate) {
+        int L = parameters.size() / 2;
         for (int l = 1; l <= L; l++) {
             String layerIdx = String.valueOf(l);
             Matrix2 W = parameters.get("W" + layerIdx);

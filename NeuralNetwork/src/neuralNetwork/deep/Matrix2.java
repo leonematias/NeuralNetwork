@@ -1,7 +1,10 @@
 package neuralNetwork.deep;
 
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Random;
 
 /**
  * A nxm float immutable matrix.
@@ -10,6 +13,8 @@ import java.util.Collection;
  * @author Matias Leone
  */
 public class Matrix2 {
+    
+    private static final NumberFormat FORMAT = new DecimalFormat("0.###");
     
     private final float[] data;
     private final int rows;
@@ -34,6 +39,15 @@ public class Matrix2 {
         this(1, 1, new float[]{value});
     }
     
+    public Matrix2(float[][] values) {
+        this(values.length, values[0].length);
+        for (int i = 0; i < values.length; i++) {
+            if(values[i].length != this.cols)
+                throw new RuntimeException("Invalid shape: " + Arrays.toString(values));
+            this.setRow(i, values[i]);
+        }
+    }
+    
     public static Matrix2 fromValue(int rows, int cols, float v) {
         Matrix2 m = new Matrix2(rows, cols);
         Arrays.fill(m.data, v);
@@ -44,16 +58,24 @@ public class Matrix2 {
         return fromValue(rows, cols, 0);
     }
     
+    public static Matrix2 ones(int rows, int cols) {
+        return fromValue(rows, cols, 1);
+    }
+    
     public static Matrix2 random(int rows, int cols) {
         return new Matrix2(rows, cols).apply(RandomOp.INSTANCE);
     }
     
-    private void set(int row, int col, int v) {
+    private void set(int row, int col, float v) {
         this.data[this.pos(row, col)] = v;
     }
     
     private void set(float[] values) {
         System.arraycopy(values, 0, this.data, 0, values.length);
+    }
+    
+    private void setRow(int row, float[] values) {
+        System.arraycopy(values, 0, this.data, rowStart(row), this.cols);
     }
     
     private int pos(int row, int col) {
@@ -73,6 +95,10 @@ public class Matrix2 {
     }
     
     public float get(int row, int col) {
+        if(row < 0 || row >= this.rows)
+            throw new RuntimeException("Invalid row: " + row);
+        if(col < 0 || col >= this.cols)
+            throw new RuntimeException("Invalid cols: " + col);
         return this.data[pos(row, col)];
     }
     
@@ -85,14 +111,7 @@ public class Matrix2 {
     }
     
     public Matrix2 apply(ElementWiseOp op) {
-        Matrix2 m = this.emptyCopy();
-        for (int row = 0; row < this.rows; row++) {
-            for (int col = 0; col < this.cols; col++) {
-                int pos = pos(row, col);
-                m.data[pos] = op.apply(m.data[pos]);
-            }
-        }
-        return m;
+        return Matrix2.apply(this, op);
     }
     
     public Matrix2 mul(float s) {
@@ -161,17 +180,62 @@ public class Matrix2 {
 
     @Override
     public String toString() {
-        return "(" + rows + ", " + cols + "): " + Arrays.toString(this.data);
+        StringBuilder sb = new StringBuilder(this.data.length * 2);
+        sb.append("Shape(").append(this.rows).append(", ").append(this.cols).append(")\n");
+        sb.append("[");
+        int maxRows = Math.min(this.rows, 6);
+        int maxCols = Math.min(this.cols, 10);
+        for (int row = 0; row < maxRows; row++) {
+            sb.append("[");
+            for (int col = 0; col < maxCols; col++) {
+                if(col > 0) {
+                    sb.append(", ");
+                }
+                sb.append(FORMAT.format(get(row, col)));
+            }
+            if(this.cols > maxCols)
+                sb.append(", ...");
+            sb.append("]");
+            if(row < this.rows - 1)
+                sb.append("\n");
+        }
+        if(this.rows > maxRows)
+            sb.append("...");
+        sb.append("]");
+        
+        return sb.toString();
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Matrix2 m = (Matrix2) obj;
+        if(m.cols != this.cols || m.rows != this.rows)
+            return false;
+        
+        return Arrays.equals(this.data, m.data);
+    }
+
+    
+    
+    
     
     public Matrix2 broadcastCol(int cols) {
-        if(this.cols == 1)
+        if(this.cols > 1)
             throw new RuntimeException("Broadcast not supported for more than 1 column");
         
         Matrix2 m = new Matrix2(this.rows, cols);
         for (int col = 0; col < cols; col++) {
             for (int row = 0; row < this.rows; row++) {
-                m.data[pos(row, col)] = this.data[pos(row, 0)];
+                m.set(row, col, this.get(row, 0));
             }
         }
         return m;
@@ -195,9 +259,9 @@ public class Matrix2 {
         for (int row = 0; row < this.rows; row++) {
             int sum = 0;
             for (int col = 0; col < this.cols; col++) {
-                sum += this.data[this.pos(row, col)];
+                sum += this.get(row, col);
             }
-            m.data[m.pos(row, 0)] = sum;
+            m.set(row, 0, sum);
         }
         return m;
     }
@@ -206,13 +270,21 @@ public class Matrix2 {
         return Matrix2.transpose(this);
     }
     
-    
+    public static Matrix2 apply(Matrix2 m, ElementWiseOp op) {
+        Matrix2 r = m.emptyCopy();
+        for (int row = 0; row < m.rows; row++) {
+            for (int col = 0; col < m.cols; col++) {
+                r.set(row, col, op.apply(m.get(row, col)));
+            }
+        }
+        return r;
+    }
     
     public static Matrix2 mul(Matrix2 a, Matrix2 b) {
         if(a.cols != b.rows)
             throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
         
-        Matrix2 c = new Matrix2(a.cols, b.rows);
+        Matrix2 c = new Matrix2(a.rows, b.cols);
         for (int row = 0; row < a.rows; row++) {
             for (int col = 0; col < b.cols; col++) {
                 c.data[c.pos(row, col)] = rowColumnDot(a, row, b, col);
@@ -224,9 +296,7 @@ public class Matrix2 {
     private static float rowColumnDot(Matrix2 a, int row, Matrix2 b, int col) {
         float dot = 0;
         for (int i = 0; i < a.cols; i++) {
-            for (int j = 0; j < b.rows; j++) {
-                dot += a.get(row, i) * b.get(j, col);
-            }
+            dot += a.get(row, i) * b.get(i, col);
         }
         return dot;
     }
@@ -264,7 +334,7 @@ public class Matrix2 {
     }
     
     public static Matrix2 mulEW(Matrix2 a, Matrix2 b) {
-        if(a.cols != b.rows)
+        if(!sameShape(a, b))
             throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
         
         Matrix2 c = a.emptyCopy();
@@ -278,7 +348,7 @@ public class Matrix2 {
     }
     
     public static Matrix2 divEW(Matrix2 a, Matrix2 b) {
-        if(a.cols != b.rows)
+        if(!sameShape(a, b))
             throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
         
         Matrix2 c = a.emptyCopy();
@@ -292,10 +362,10 @@ public class Matrix2 {
     }
     
     public static Matrix2 transpose(Matrix2 m) {
-        Matrix2 t = m.emptyCopy();
+        Matrix2 t = new Matrix2(m.cols, m.rows);
         for (int row = 0; row < m.rows; row++) {
             for (int col = 0; col < m.cols; col++) {
-                t.data[t.pos(col, row)] = m.get(row, col);
+                t.set(col, row, m.get(row, col));
             }
         }
         return t;
@@ -338,9 +408,10 @@ public class Matrix2 {
     
     public static class RandomOp implements ElementWiseOp {
         public static final RandomOp INSTANCE = new RandomOp();
+        private static final Random RAND = new Random();
         @Override
         public float apply(float v) {
-            return v * (float)Math.random();
+            return (float)RAND.nextGaussian();
         }
     }
     
@@ -426,7 +497,7 @@ public class Matrix2 {
         public static final SigmoidOp INSTANCE = new SigmoidOp();
         @Override
         public float apply(float v) {
-            return 1 / (1 + (float)Math.exp(-v));
+            return 1f / (1f + (float)Math.exp(-v));
         }
     }
     
