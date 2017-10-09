@@ -158,6 +158,14 @@ public class Matrix2 {
         return apply(new LowerOp(v));
     }
     
+    public Matrix2 pow(float s) {
+        return apply(new PowerOp(s));
+    }
+    
+    public Matrix2 square(float s) {
+        return apply(PowerOp.SQ_INSTANCE);
+    }
+    
     public Matrix2 mul(Matrix2 m) {
         return Matrix2.mul(this, m);
     }
@@ -177,6 +185,7 @@ public class Matrix2 {
     public Matrix2 divEW(Matrix2 m) {
         return Matrix2.divEW(this, m);
     }
+
 
     @Override
     public String toString() {
@@ -257,7 +266,7 @@ public class Matrix2 {
     public Matrix2 sumColumns() {
         Matrix2 m = new Matrix2(this.rows, 1);
         for (int row = 0; row < this.rows; row++) {
-            int sum = 0;
+            float sum = 0;
             for (int col = 0; col < this.cols; col++) {
                 sum += this.get(row, col);
             }
@@ -275,6 +284,19 @@ public class Matrix2 {
         for (int row = 0; row < m.rows; row++) {
             for (int col = 0; col < m.cols; col++) {
                 r.set(row, col, op.apply(m.get(row, col)));
+            }
+        }
+        return r;
+    }
+    
+    public static Matrix2 apply(Matrix2 a, Matrix2 b, ElementWise2MatOp op) {
+        if(!sameShape(a, b))
+            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
+        
+        Matrix2 r = a.emptyCopy();
+        for (int row = 0; row < a.rows; row++) {
+            for (int col = 0; col < a.cols; col++) {
+                r.set(row, col, op.apply(a.get(row, col), b.get(row, col)));
             }
         }
         return r;
@@ -302,31 +324,11 @@ public class Matrix2 {
     }
     
     public static Matrix2 add(Matrix2 a, Matrix2 b) {
-        if(!sameShape(a, b))
-            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
-        
-        Matrix2 c = a.emptyCopy();
-        for (int row = 0; row < a.rows; row++) {
-            for (int col = 0; col < a.cols; col++) {
-                int pos = a.pos(row, col);
-                c.data[pos] = a.data[pos] + b.data[pos];
-            }
-        }
-        return c;
+        return Matrix2.apply(a, b, AddMatOp.INSTANCE);
     }
     
     public static Matrix2 sub(Matrix2 a, Matrix2 b) {
-        if(!sameShape(a, b))
-            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
-        
-        Matrix2 c = a.emptyCopy();
-        for (int row = 0; row < a.rows; row++) {
-            for (int col = 0; col < a.cols; col++) {
-                int pos = a.pos(row, col);
-                c.data[pos] = a.data[pos] - b.data[pos];
-            }
-        }
-        return c;
+        return Matrix2.apply(a, b, SubMatOp.INSTANCE);
     }
     
     public static boolean sameShape(Matrix2 a, Matrix2 b) {
@@ -334,31 +336,11 @@ public class Matrix2 {
     }
     
     public static Matrix2 mulEW(Matrix2 a, Matrix2 b) {
-        if(!sameShape(a, b))
-            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
-        
-        Matrix2 c = a.emptyCopy();
-        for (int row = 0; row < a.rows; row++) {
-            for (int col = 0; col < a.cols; col++) {
-                int pos = a.pos(row, col);
-                c.data[pos] = a.data[pos] * b.data[pos];
-            }
-        }
-        return c;
+        return Matrix2.apply(a, b, MulMatEWOp.INSTANCE);
     }
     
     public static Matrix2 divEW(Matrix2 a, Matrix2 b) {
-        if(!sameShape(a, b))
-            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
-        
-        Matrix2 c = a.emptyCopy();
-        for (int row = 0; row < a.rows; row++) {
-            for (int col = 0; col < a.cols; col++) {
-                int pos = a.pos(row, col);
-                c.data[pos] = a.data[pos] / b.data[pos];
-            }
-        }
-        return c;
+        return Matrix2.apply(a, b, DivMatEWOp.INSTANCE);
     }
     
     public static Matrix2 transpose(Matrix2 m) {
@@ -482,6 +464,17 @@ public class Matrix2 {
         }
     }
     
+    public static class PowerOp extends ScalarOp {
+        public static final PowerOp SQ_INSTANCE = new PowerOp(2);
+        public PowerOp(float s) {
+            super(s);
+        }
+        @Override
+        public float apply(float v) {
+            return (float)Math.pow(v, s);
+        }
+    }
+    
     public static class ScalarMinusOp extends ScalarOp {
         public static final ScalarMinusOp ONE_MINUS = new ScalarMinusOp(1);
         public ScalarMinusOp(float s) {
@@ -514,6 +507,45 @@ public class Matrix2 {
         @Override
         public float apply(float v) {
             return (float)Math.log(v);
+        }
+    }
+    
+    /**
+     * Element wise operation between two matrix
+     */
+    public interface ElementWise2MatOp {
+        float apply(float a, float b);
+    }
+    
+    public static class AddMatOp implements ElementWise2MatOp {
+        public static final ElementWise2MatOp INSTANCE = new AddMatOp();
+        @Override
+        public float apply(float a, float b) {
+            return a + b;
+        }
+    }
+    
+    public static class SubMatOp implements ElementWise2MatOp {
+        public static final ElementWise2MatOp INSTANCE = new SubMatOp();
+        @Override
+        public float apply(float a, float b) {
+            return a - b;
+        }
+    }
+    
+    public static class MulMatEWOp implements ElementWise2MatOp {
+        public static final ElementWise2MatOp INSTANCE = new MulMatEWOp();
+        @Override
+        public float apply(float a, float b) {
+            return a * b;
+        }
+    }
+    
+    public static class DivMatEWOp implements ElementWise2MatOp {
+        public static final ElementWise2MatOp INSTANCE = new DivMatEWOp();
+        @Override
+        public float apply(float a, float b) {
+            return a / b;
         }
     }
     

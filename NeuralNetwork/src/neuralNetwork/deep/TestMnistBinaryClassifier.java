@@ -46,21 +46,18 @@ public class TestMnistBinaryClassifier {
             digitImages.add(oneImages.get(i));
         }
         
+        
         //Split train and test set
         List<ImageData> trainSet = new ArrayList<>();
         List<ImageData> testSet = new ArrayList<>();
         splitDataSet(digitImages, 0.7f, trainSet, testSet);
-        
-        
-        //trainSet = new ArrayList<>(Arrays.asList(trainSet.get(0)));
-        
-        
         
         //Conver to X,Y matrices
         Matrix2 trainX = toX(trainSet);
         Matrix2 trainY = toY(trainSet);
         Matrix2 testX = toX(testSet);
         Matrix2 testY = toY(testSet);
+        
         
         //Train binary classifier with layers [400, 25, 10, 1]
         DeepNeuralNetwork classifier = new DeepNeuralNetwork(new int[]{MNIST_IMG_WIDTH * MNIST_IMG_HEIGHT, 25, 10, 1}, 3000, 0.0075f);
@@ -72,6 +69,26 @@ public class TestMnistBinaryClassifier {
         System.out.println("Train set accuracy: " + accuracy(trainY, trainYpred));
         System.out.println("Test set accuracy: " + accuracy(testY, testYpred));
         
+        
+        
+        /*
+        //Small network test case
+        List<ImageData> trainSet = new ArrayList<>(Arrays.asList(
+                new ImageData(new float[]{-1, 1}, 0),
+                new ImageData(new float[]{-2, -1}, 0),
+                new ImageData(new float[]{-3, 1}, 0),
+                new ImageData(new float[]{-4, -1}, 0),
+                
+                new ImageData(new float[]{1, 1}, 1),
+                new ImageData(new float[]{2, -1}, 1),
+                new ImageData(new float[]{3, 1}, 1),
+                new ImageData(new float[]{4, -1}, 1)
+        ));
+        Matrix2 trainX = toX(trainSet);
+        Matrix2 trainY = toY(trainSet);
+        DeepNeuralNetwork classifier = new DeepNeuralNetwork(new int[]{2, 1}, 3000, 0.0075f);
+        classifier.train(trainX, trainY, true);
+        */
         
     }
     
@@ -158,7 +175,7 @@ public class TestMnistBinaryClassifier {
     }
     
     private Matrix2 toX(ImageData item) {
-        return new Matrix2(MNIST_IMG_WIDTH * MNIST_IMG_HEIGHT, 1, item.data);
+        return new Matrix2(item.data.length, 1, item.data);
     }
     
     private Matrix2 toY(ImageData item) {

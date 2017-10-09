@@ -164,6 +164,9 @@ public class DeepNeuralNetwork {
         //Compute sigmoid gradient for last layer
         //dAL = - (np.divide(Y, AL) - np.divide(1-Y, 1-AL))
         Matrix2 dAL = Matrix2.divEW(Y, AL).sub(Matrix2.divEW(Y.oneMinus(), AL.oneMinus())).mul(-1);
+        
+        
+        
         cache = caches.get(L - 1);
         res = linearActivationBackward(dAL, cache, SigmoidBackward.INSTANCE);
         layerIdx = String.valueOf(L);
@@ -195,10 +198,10 @@ public class DeepNeuralNetwork {
         int m = cache.A.cols();
         
         //dW = 1/m * np.dot(dZ, A_prev.T)
-        Matrix2 dW = dZ.mul(cache.A.transpose()).mul(1/m);
+        Matrix2 dW = dZ.mul(cache.A.transpose()).mul(1f/m);
         
         //db = 1/m * np.sum(dZ, axis=1, keepdims=True)
-        Matrix2 db = dZ.sumColumns().mul(1/m);
+        Matrix2 db = dZ.sumColumns().mul(1f/m);
         
         //dA_prev = np.dot(W.T, dZ)
         Matrix2 dAprev = cache.W.transpose().mul(dZ);
