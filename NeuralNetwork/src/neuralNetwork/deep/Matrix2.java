@@ -20,9 +20,11 @@ public class Matrix2 {
     private final int rows;
     private final int cols;
     
+    /*-------------------------- Creating methods --------------------------*/
+    
     public Matrix2(int rows, int cols) {
         if(rows < 1 || cols < 1)
-            throw new RuntimeException("Invalid shape (" + rows + ", " + cols + ")");
+            error("Invalid shape (" + rows + ", " + cols + ")");
         this.rows = rows;
         this.cols = cols;
         this.data = new float[rows * cols];
@@ -31,7 +33,7 @@ public class Matrix2 {
     public Matrix2(int rows, int cols, float[] data) {
         this(rows, cols);
         if(data.length != this.data.length)
-            throw new RuntimeException("Invalid data length: " + data.length);
+            error("Invalid data length: " + data.length);
         this.set(data);
     }
     
@@ -43,7 +45,7 @@ public class Matrix2 {
         this(values.length, values[0].length);
         for (int i = 0; i < values.length; i++) {
             if(values[i].length != this.cols)
-                throw new RuntimeException("Invalid shape: " + Arrays.toString(values));
+                error("Invalid shape: " + Arrays.toString(values));
             this.setRow(i, values[i]);
         }
     }
@@ -62,9 +64,13 @@ public class Matrix2 {
         return fromValue(rows, cols, 1);
     }
     
-    public static Matrix2 random(int rows, int cols) {
-        return new Matrix2(rows, cols).apply(RandomOp.INSTANCE);
+    public static Matrix2 random(int rows, int cols, long randSeed) {
+        return new Matrix2(rows, cols).apply(new RandomOp(randSeed));
     }
+    
+    
+    /*-------------------------- Internal methods --------------------------*/
+    
     
     private void set(int row, int col, float v) {
         this.data[this.pos(row, col)] = v;
@@ -94,11 +100,27 @@ public class Matrix2 {
         return new Matrix2(this.rows, this.cols);
     }
     
+    private static void copyRow(Matrix2 src, int srcRow, Matrix2 dst, int dstRow) {
+        System.arraycopy(src.data, src.rowStart(srcRow), dst.data, dst.rowStart(dstRow), src.cols);
+    }
+    
+    private static void copyColumn(Matrix2 src, int srcCol, Matrix2 dst, int dstCol) {
+        for (int row = 0; row < src.rows; row++) {
+            dst.set(row, dstCol, src.get(row, srcCol));
+        }
+    }
+    
+    private static void error(String msg) {
+        throw new RuntimeException(msg);
+    }
+    
+    /*-------------------------- Instance methods --------------------------*/
+    
     public float get(int row, int col) {
         if(row < 0 || row >= this.rows)
-            throw new RuntimeException("Invalid row: " + row);
+            error("Invalid row: " + row);
         if(col < 0 || col >= this.cols)
-            throw new RuntimeException("Invalid cols: " + col);
+            error("Invalid cols: " + col);
         return this.data[pos(row, col)];
     }
     
@@ -162,8 +184,12 @@ public class Matrix2 {
         return apply(new PowerOp(s));
     }
     
-    public Matrix2 square(float s) {
+    public Matrix2 square() {
         return apply(PowerOp.SQ_INSTANCE);
+    }
+    
+    public Matrix2 sqrt() {
+        return apply(SqrtOp.INSTANCE);
     }
     
     public Matrix2 mul(Matrix2 m) {
@@ -185,7 +211,30 @@ public class Matrix2 {
     public Matrix2 divEW(Matrix2 m) {
         return Matrix2.divEW(this, m);
     }
+    
+    public Matrix2 transpose() {
+        return Matrix2.transpose(this);
+    }
+    
+    public Matrix2 broadcastCol(int cols) {
+        return Matrix2.broadcastCol(this, cols);
+    }
+    
+    public Matrix2 broadcastRow(int rows) {
+        return Matrix2.broadcastRow(this, rows);
+    }
 
+    public Matrix2 sumColumns() {
+        return Matrix2.sumColumns(this);
+    }
+    
+    public Matrix2 sumRows() {
+        return Matrix2.sumRows(this);
+    }
+    
+    public float sum() {
+        return Matrix2.sum(this);
+    }
 
     @Override
     public String toString() {
@@ -236,47 +285,67 @@ public class Matrix2 {
     
     
     
+    /*-------------------------- Static methods --------------------------*/
     
-    public Matrix2 broadcastCol(int cols) {
-        if(this.cols > 1)
-            throw new RuntimeException("Broadcast not supported for more than 1 column");
+    
+    public static Matrix2 broadcastCol(Matrix2 m, int cols) {
+        if(m.cols > 1)
+            error("Broadcast not supported for more than 1 column");
+        if(cols < 1)
+            error("Invalid broadcast number: " + cols);
         
-        Matrix2 m = new Matrix2(this.rows, cols);
+        Matrix2 r = new Matrix2(m.rows, cols);
         for (int col = 0; col < cols; col++) {
-            for (int row = 0; row < this.rows; row++) {
-                m.set(row, col, this.get(row, 0));
-            }
+            Matrix2.copyColumn(m, 0, r, col);
         }
-        return m;
+        return r;
     }
     
-    public Matrix2 broadcastRow(int rows) {
-        if(this.rows == 1)
-            throw new RuntimeException("Broadcast not supported for more than 1 row");
+    public static Matrix2 broadcastRow(Matrix2 m, int rows) {
+        if(m.rows == 1)
+            error("Broadcast not supported for more than 1 row");
+        if(rows < 1)
+            error("Invalid broadcast number: " + rows);
         
-        Matrix2 m = new Matrix2(rows, this.cols);
-        for (int col = 0; col < this.cols; col++) {
-            for (int row = 0; row < rows; row++) {
-                m.data[pos(row, col)] = this.data[pos(0, col)];
-            }
+        Matrix2 r = new Matrix2(rows, m.cols);
+        for (int row = 0; row < rows; row++) {
+            Matrix2.copyRow(m, 0, r, row);
         }
-        return m;
+        return r;
     }
     
-    public Matrix2 sumColumns() {
-        Matrix2 m = new Matrix2(this.rows, 1);
-        for (int row = 0; row < this.rows; row++) {
+    public static Matrix2 sumColumns(Matrix2 m) {
+        Matrix2 r = new Matrix2(m.rows, 1);
+        for (int row = 0; row < m.rows; row++) {
             float sum = 0;
-            for (int col = 0; col < this.cols; col++) {
-                sum += this.get(row, col);
+            for (int col = 0; col < m.cols; col++) {
+                sum += m.get(row, col);
             }
-            m.set(row, 0, sum);
+            r.set(row, 0, sum);
         }
-        return m;
+        return r;
     }
     
-    public Matrix2 transpose() {
-        return Matrix2.transpose(this);
+    public static Matrix2 sumRows(Matrix2 m) {
+        Matrix2 r = new Matrix2(1, m.cols);
+        for (int col = 0; col < m.cols; col++) {
+            float sum = 0;
+            for (int row = 0; row < m.rows; row++) {
+                sum += m.get(row, col);
+            }
+            r.set(0, col, sum);
+        }
+        return r;
+    }
+    
+    public static float sum(Matrix2 m) {
+        float sum = 0;
+        for (int row = 0; row < m.rows; row++) {
+            for (int col = 0; col < m.cols; col++) {
+                sum += m.get(row, col);
+            }
+        }
+        return sum;
     }
     
     public static Matrix2 apply(Matrix2 m, ElementWiseOp op) {
@@ -291,7 +360,7 @@ public class Matrix2 {
     
     public static Matrix2 apply(Matrix2 a, Matrix2 b, ElementWise2MatOp op) {
         if(!sameShape(a, b))
-            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
+            error("Invalid shapes, a: " + a + ", b: " + b);
         
         Matrix2 r = a.emptyCopy();
         for (int row = 0; row < a.rows; row++) {
@@ -304,7 +373,7 @@ public class Matrix2 {
     
     public static Matrix2 mul(Matrix2 a, Matrix2 b) {
         if(a.cols != b.rows)
-            throw new RuntimeException("Invalid shapes, a: " + a + ", b: " + b);
+            error("Invalid shapes, a: " + a + ", b: " + b);
         
         Matrix2 c = new Matrix2(a.rows, b.cols);
         for (int row = 0; row < a.rows; row++) {
@@ -361,7 +430,7 @@ public class Matrix2 {
                 rows = m.rows;
             } else {
                 if(m.rows != rows)
-                    throw new RuntimeException("Invalid number of rows in: " + m);
+                    error("Invalid number of rows in: " + m);
             }
             cols += m.cols;
         }
@@ -369,16 +438,47 @@ public class Matrix2 {
         Matrix2 r = new Matrix2(rows, cols);
         int colIdx = 0;
         for (Matrix2 m : list) {
-            for (int row = 0; row < m.rows; row++) {
-                for (int col = 0; col < m.cols; col++) {
-                    r.data[r.pos(row, colIdx + col)] = m.get(row, col);
-                }
+            for (int col = 0; col < m.cols; col++) {
+                Matrix2.copyColumn(m, col, r, colIdx);
+                colIdx++;
             }
-            colIdx += m.cols;
+        }
+        return r;
+    }
+    
+    public static Matrix2 getColumns(Matrix2 m, int[] indices) {
+        if(indices == null || indices.length == 0)
+            error("Invalid indices: " + Arrays.toString(indices));
+        
+        Matrix2 r = new Matrix2(m.rows, indices.length);
+        for (int i = 0; i < indices.length; i++) {
+            int col = indices[i];
+            if(col < 0 || col >= m.cols)
+                error("Invalid column index: " + col);
+            Matrix2.copyColumn(m, col, r, i);
         }
         return r;
     }
 
+    public static Matrix2 getRows(Matrix2 m, int[] indices) {
+        if(indices == null || indices.length == 0)
+            error("Invalid indices: " + Arrays.toString(indices));
+        
+        Matrix2 r = new Matrix2(indices.length, m.cols);
+        for (int i = 0; i < indices.length; i++) {
+            int row = indices[i];
+            if(row < 0 || row >= m.cols)
+                error("Invalid row index: " + row);
+            Matrix2.copyRow(m, row, r, i);
+        }
+        return r;
+    }
+    
+    
+    
+    
+    
+    /*-------------------------- Element-wise methods --------------------------*/
     
     
     /**
@@ -389,11 +489,13 @@ public class Matrix2 {
     }
     
     public static class RandomOp implements ElementWiseOp {
-        public static final RandomOp INSTANCE = new RandomOp();
-        private static final Random RAND = new Random();
+        private final Random rand;
+        public RandomOp(long randSeed) {
+            this.rand = new Random(randSeed);
+        }
         @Override
         public float apply(float v) {
-            return (float)RAND.nextGaussian();
+            return (float)rand.nextGaussian();
         }
     }
     
@@ -465,7 +567,7 @@ public class Matrix2 {
     }
     
     public static class PowerOp extends ScalarOp {
-        public static final PowerOp SQ_INSTANCE = new PowerOp(2);
+        public static final ElementWiseOp SQ_INSTANCE = new PowerOp(2);
         public PowerOp(float s) {
             super(s);
         }
@@ -475,8 +577,17 @@ public class Matrix2 {
         }
     }
     
+    public static class SqrtOp implements ElementWiseOp {
+        public static final ElementWiseOp INSTANCE = new SqrtOp();
+        @Override
+        public float apply(float v) {
+            return (float)Math.sqrt(v);
+        }
+        
+    }
+    
     public static class ScalarMinusOp extends ScalarOp {
-        public static final ScalarMinusOp ONE_MINUS = new ScalarMinusOp(1);
+        public static final ElementWiseOp ONE_MINUS = new ScalarMinusOp(1);
         public ScalarMinusOp(float s) {
             super(s);
         }
@@ -487,7 +598,7 @@ public class Matrix2 {
     }
     
     public static class SigmoidOp implements ElementWiseOp {
-        public static final SigmoidOp INSTANCE = new SigmoidOp();
+        public static final ElementWiseOp INSTANCE = new SigmoidOp();
         @Override
         public float apply(float v) {
             return 1f / (1f + (float)Math.exp(-v));
@@ -495,7 +606,7 @@ public class Matrix2 {
     }
     
     public static class ReluOp implements ElementWiseOp {
-        public static final ReluOp INSTANCE = new ReluOp();
+        public static final ElementWiseOp INSTANCE = new ReluOp();
         @Override
         public float apply(float v) {
             return Math.max(0, v);
@@ -503,7 +614,7 @@ public class Matrix2 {
     }
     
     public static class LogOp implements ElementWiseOp {
-        public static final LogOp INSTANCE = new LogOp();
+        public static final ElementWiseOp INSTANCE = new LogOp();
         @Override
         public float apply(float v) {
             return (float)Math.log(v);

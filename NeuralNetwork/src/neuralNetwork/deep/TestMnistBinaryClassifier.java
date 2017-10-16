@@ -31,6 +31,8 @@ public class TestMnistBinaryClassifier {
     }
     
     private void run() {
+        long randSeed = 12345;
+        
         //Load data
         String xPath = "data/input_images.csv";
         String yPath = "data/input_classification.csv";
@@ -61,7 +63,14 @@ public class TestMnistBinaryClassifier {
         
         
         //Train binary classifier with layers [400, 25, 10, 1]
-        DeepNeuralNetwork classifier = new DeepNeuralNetwork(new int[]{MNIST_IMG_WIDTH * MNIST_IMG_HEIGHT, 25, 10, 1}, 2000, 0.075f);
+        DeepNeuralNetwork classifier = new DeepNeuralNetwork(
+                randSeed,
+                new int[]{MNIST_IMG_WIDTH * MNIST_IMG_HEIGHT, 25, 10, 1}, //network layers
+                128, //mini-batch size
+                1000, //epochs
+                0.075f, //learning rate
+                0.7f //L2 lambda regularization
+        );
         classifier.train(trainX, trainY, true);
         
         //Predict train and test set

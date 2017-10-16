@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Deep Neural Network with L hidden layers
@@ -18,50 +19,70 @@ import java.util.Map;
 public class DeepNeuralNetwork {
     
     private final int[] layerDims;
+    private final long randSeed;
+    private final int miniBatchSize;
     private final int iterations;
     private final float learningRate;
+    private final float lambda;
     private Map<String, Matrix2> parameters;
     
-    public DeepNeuralNetwork(int[] layerDims, int iterations, float learningRate) {
+    public DeepNeuralNetwork(long randSeed, int[] layerDims, int miniBatchSize, int iterations, float learningRate, float lambda) {
         this.layerDims = layerDims;
+        this.randSeed = randSeed;
+        this.miniBatchSize = miniBatchSize;
         this.iterations = iterations;
         this.learningRate = learningRate;
+        this.lambda = lambda;
     }
 
     public void train(Matrix2 X, Matrix2 Y, boolean printCost) {
-        int m = X.cols();
-        
         //Initialize parameters
-        this.parameters = initializeParameters(this.layerDims);
+        long currentSeed = randSeed;
+        this.parameters = initializeParameters(this.layerDims, currentSeed);
         
         //Gradient descent loop
-        List<CacheItem> caches = new ArrayList<>();
-        Map<String, Matrix2> grads = new HashMap<>();
+        List<CacheItem> caches = new ArrayList<>(this.layerDims.length - 1);
+        Map<String, Matrix2> grads = new HashMap<>(this.layerDims.length - 1);
+        List<MiniBatch> miniBatches = new ArrayList<>(X.cols() / this.miniBatchSize + 1);
         for (int i = 0; i < iterations; i++) {
-            caches.clear();
             grads.clear();
+            miniBatches.clear();
             
-            //Forward propagation
-            Matrix2 AL = modelForward(X, parameters, caches);
+            //Create mini-batches
+            currentSeed += 1;
+            randomMiniBatches(X, Y, this.miniBatchSize, currentSeed, miniBatches);
             
-            //Compute cost
-            float cost = computeCost(AL, Y);
+            //Loop through all mini-batches
+            float cost = Float.MAX_VALUE;
+            for (MiniBatch miniBatch : miniBatches) {
+                caches.clear();
+                
+                //Forward propagation
+                Matrix2 AL = modelForward(miniBatch.X, this.parameters, caches);
+
+                //Compute cost
+                cost = computeCost(AL, miniBatch.Y, this.lambda, this.parameters);
+
+                //Backward propagation
+                grads = modelBackward(AL, miniBatch.Y, caches, grads, this.lambda);
+
+                //Update parameters
+                updateParameters(this.parameters, grads, this.learningRate);
+            }
             
-            //Backward propagation
-            grads = modelBackward(AL, Y, caches, grads);
-            
-            //Update parameters
-            updateParameters(parameters, grads, learningRate);
-            
-            //print cost
+            //Print cost
             if(printCost) {
                 if(i % 100 == 0) {
                     System.out.println("Cost after iteration " + i + ": " + cost);
                 }
-            }           
+            } 
+                      
         }
     }
     
+    /**
+     * Predict Y for the given X using the trained model
+     */
     public Matrix2 predict(Matrix2 X) {
         List<CacheItem> caches = new ArrayList<>();
         
@@ -78,13 +99,13 @@ public class DeepNeuralNetwork {
     /**
      * Init W and b parameters for all layers
      */
-    private Map<String, Matrix2> initializeParameters(int[] layerDims) {
+    private Map<String, Matrix2> initializeParameters(int[] layerDims, long randSeed) {
         Map<String, Matrix2> parameters = new HashMap<>((layerDims.length - 1) * 2);
         for (int l = 1; l < layerDims.length; l++) {
             String layerIdx = String.valueOf(l);
             int rows = layerDims[l];
             int cols = layerDims[l - 1];
-            parameters.put("W" + layerIdx, Matrix2.random(rows, cols).mul(0.01f));
+            parameters.put("W" + layerIdx, Matrix2.random(rows, cols, randSeed).mul(0.01f));
             parameters.put("b" + layerIdx, Matrix2.zeros(rows, 1));
         }
         return parameters;
@@ -142,19 +163,34 @@ public class DeepNeuralNetwork {
     /**
      * Compute loss
      */
-    private float computeCost(Matrix2 AL, Matrix2 Y) {
+    private float computeCost(Matrix2 AL, Matrix2 Y, float lambda, Map<String, Matrix2> parameters) {
         int m = Y.cols();
+        int L = parameters.size() / 2;
         
-        //cost = -1/m * np.sum(Y * np.log(AL) + (1-Y) * np.log(1-AL))
-        float cost = Matrix2.add(
+        //Cross-entropy cost = -1/m * sum(Y * log(AL) + (1-Y) * log(1-AL))
+        float crossEntropyCost = Matrix2.add(
                 Matrix2.mulEW(Y, AL.log()), 
                 Matrix2.mulEW(Y.oneMinus(), AL.oneMinus().log())
         ).sumColumns().mul(-1f/m).get(0,0);
         
+        //L2 regularization cost: lambda/2m * (sum(W1^2) + sum(W2^2) + ... + (WL^2))
+        float l2RegCost = 0;
+        for (int l = 1; l < L; l++) {
+            Matrix2 W = parameters.get("W" + l);
+            l2RegCost += W.square().sum();
+        }
+        l2RegCost *= lambda / (2f * m);
+        
+        //Combined cost
+        float cost = crossEntropyCost + l2RegCost;
+        
         return cost;
     }
     
-    private Map<String, Matrix2> modelBackward(Matrix2 AL, Matrix2 Y, List<CacheItem> caches, Map<String, Matrix2> grads) {
+    /**
+     * Backward propagation for all layers
+     */
+    private Map<String, Matrix2> modelBackward(Matrix2 AL, Matrix2 Y, List<CacheItem> caches, Map<String, Matrix2> grads, float lambda) {
         int m = Y.cols();
         int L = caches.size();
         CacheItem cache;
@@ -165,7 +201,7 @@ public class DeepNeuralNetwork {
         //dAL = - ((Y / AL) - ((1-Y) / (1-AL)))
         Matrix2 dAL = Matrix2.divEW(Y, AL).sub(Matrix2.divEW(Y.oneMinus(), AL.oneMinus())).mul(-1f);
         cache = caches.get(L - 1);
-        res = linearActivationBackward(dAL, cache, SigmoidBackward.INSTANCE);
+        res = linearActivationBackward(dAL, cache, SigmoidBackward.INSTANCE, lambda);
         layerIdx = String.valueOf(L);
         grads.put("dA" + layerIdx, res.dA);
         grads.put("dW" + layerIdx, res.dW);
@@ -176,7 +212,7 @@ public class DeepNeuralNetwork {
             layerIdx = String.valueOf(l + 1);
             cache = caches.get(l);
             Matrix2 dA_current = grads.get("dA" + (l + 2));
-            res = linearActivationBackward(dA_current, cache, ReluBackward.INSTANCE);
+            res = linearActivationBackward(dA_current, cache, ReluBackward.INSTANCE, lambda);
             grads.put("dA" + layerIdx, res.dA);
             grads.put("dW" + layerIdx, res.dW);
             grads.put("db" + layerIdx, res.db);
@@ -185,21 +221,21 @@ public class DeepNeuralNetwork {
         return grads;
     }
     
-    private BackpropResult linearActivationBackward(Matrix2 dA, CacheItem cache, BackwardOp activation) {
+    private BackpropResult linearActivationBackward(Matrix2 dA, CacheItem cache, BackwardOp activation, float lambda) {
         Matrix2 dZ = activation.apply(dA, cache.activationCache);    
-        return linearBackward(dZ, cache.linearCache); 
+        return linearBackward(dZ, cache.linearCache, lambda); 
     }
     
-    private BackpropResult linearBackward(Matrix2 dZ, LinearCache cache) {
+    private BackpropResult linearBackward(Matrix2 dZ, LinearCache cache, float lambda) {
         int m = cache.Aprev.cols();
         
-        //dW = 1/m * mul(dZ, A_prev.T)
-        Matrix2 dW = dZ.mul(cache.Aprev.transpose()).mul(1f/m);
+        //dW = 1/m * mul(dZ, Aprev.T) + lambda/m * W
+        Matrix2 dW = dZ.mul(cache.Aprev.transpose()).mul(1f/m).add(cache.W.mul(lambda / m));
         
         //db = 1/m * sumCols(dZ)
         Matrix2 db = dZ.sumColumns().mul(1f/m);
         
-        //dA_prev = mul(W.T, dZ)
+        //dAprev = mul(W.T, dZ)
         Matrix2 dAprev = cache.W.transpose().mul(dZ);
         
         return new BackpropResult(dAprev, dW, db);
@@ -223,7 +259,46 @@ public class DeepNeuralNetwork {
         }
     }
 
+    public void randomMiniBatches(Matrix2 X, Matrix2 Y, int miniBatchSize, long randSeed, List<MiniBatch> miniBatches) {
+        //Shuffle sample indices
+        int m = Y.cols();
+        int[] indices = shuffleArray(m, randSeed);
+        
+        //Assembly complete mini-batches
+        int completeBatches = m / miniBatchSize;
+        int[] batchIndices = new int[miniBatchSize];
+        for (int i = 0; i < completeBatches; i++) {
+            System.arraycopy(indices, i * miniBatchSize, batchIndices, 0, batchIndices.length);
+            Matrix2 batchX = Matrix2.getColumns(X, batchIndices);
+            Matrix2 batchY = Matrix2.getColumns(Y, batchIndices);
+            miniBatches.add(new MiniBatch(batchX, batchY));
+        }
+        
+        //Assembly last incomplete batch
+        int pendingSize = m % miniBatchSize;
+        if(pendingSize != 0) {
+            batchIndices = new int[pendingSize];
+            System.arraycopy(indices, completeBatches * miniBatchSize, batchIndices, 0, batchIndices.length);
+            Matrix2 batchX = Matrix2.getColumns(X, batchIndices);
+            Matrix2 batchY = Matrix2.getColumns(Y, batchIndices);
+            miniBatches.add(new MiniBatch(batchX, batchY));
+        }
+    }
     
+    private static int[] shuffleArray(int n, long randSeed) {
+        int[] a = new int[n];
+        for (int i = 0; i < n; i++) {
+            a[i] = i;
+        }
+        Random rand = new Random(randSeed);
+        for (int i = 0; i < n; i++) {
+            int j = i + rand.nextInt(n - i);
+            int tmp = a[i];
+            a[i] = a[j];
+            a[j] = tmp;
+        }
+        return a;
+    }
     
     
     
@@ -284,7 +359,7 @@ public class DeepNeuralNetwork {
         }
     }
     
-    public static class BackpropResult {
+    private static class BackpropResult {
         public final Matrix2 dA;
         public final Matrix2 dW;
         public final Matrix2 db;
@@ -293,6 +368,16 @@ public class DeepNeuralNetwork {
             this.dW = dW;
             this.db = db;
         }  
+    }
+    
+    private static class MiniBatch {
+        public final Matrix2 X;
+        public final Matrix2 Y;
+        public MiniBatch(Matrix2 X, Matrix2 Y) {
+            this.X = X;
+            this.Y = Y;
+        }
+        
     }
     
     
